@@ -156,11 +156,10 @@ Bronze, Argent, Or, Platine, Diamant, puis « Légende » réservé au top 100.
 
 ## 7. Fonctionnalités sociales
 
-### Tables privées par lien (fonctionnalité phare)
-1. Le joueur crée une table et choisit le jeu et les règles.
-2. Il reçoit un lien et éventuellement un QR code.
-3. Les amis rejoignent en mode invité, sans compte. Jetons temporaires, hors classement.
-4. En fin de partie, on leur propose de créer un compte.
+### Rooms privées par code (fonctionnalité phare)
+1. Le joueur crée une room et choisit le jeu et les règles.
+2. Il reçoit un **code de 5 lettres** (ex. `VXKTR`) à transmettre à ses amis.
+3. Les amis saisissent le code depuis leur compte : **pas de mode invité, chacun doit avoir un compte**.
 
 ### Tournois
 - **Publics** planifiés, entrée en jetons ; **privés** (premium) ; formats rapide, Sit & Go, élimination.
@@ -189,9 +188,9 @@ Bronze, Argent, Or, Platine, Diamant, puis « Légende » réservé au top 100.
 
 ## 9. Périmètre MVP et feuille de route
 
-- **MVP** : inscription / âge / invité, blackjack + Hold'em, bonus quotidien + filet, tables privées par lien, classement de saison global, boutique de 10-15 cosmétiques, mentions légales.
+- **MVP** : inscription (compte obligatoire, date de naissance), **blackjack + roulette**, poker affiché grisé « Bientôt disponible », bonus quotidien + filet, **rooms privées par code à 5 lettres**, classement de saison global, boutique de 10-15 cosmétiques, mentions légales.
 - **1.1** : premium, ligues, défis, classements par jeu et amis, liste d'amis.
-- **1.2** : roulette, machine à sous, tournois publics, pass de saison, premier thème.
+- **1.2** : poker Texas Hold'em, machine à sous, tournois publics, pass de saison, premier thème.
 - **2** : tournois privés, stats avancées, spectateur/streamers, jeux originaux, app mobile.
 
 ---
@@ -205,3 +204,25 @@ Bronze, Argent, Or, Platine, Diamant, puis « Légende » réservé au top 100.
 **Décisions ouvertes** : nom et DA, solde conservé ou remis à zéro, publicité, monnaie de boutique vs euros, prix définitifs.
 
 **Prochaines étapes** : avocat → prestataire de paiement → nom et DA → modèle de données et serveur blackjack → MVP testé entre amis → analyse et ajustements.
+
+---
+
+## 11. Décisions prises (tour de questions n° 1)
+
+| Sujet | Décision |
+|---|---|
+| Nom | **Estacasino** |
+| Ambiance | **Club privé moderne** : fond presque noir, feutre profond, une seule couleur d'accent |
+| Rendu | 2D, mais dynamique (animations soignées) |
+| Personnages | **Avatars illustrés**, déclinables en cosmétiques (potentiel de vente) |
+| Ton | Sérieux, avec une petite touche décalée (le croupier fait des remarques, en italique) |
+| Son | Plus tard (hors MVP) |
+| Soldes | Solde total conservé d'une saison à l'autre ; classement sur les gains de la saison. **Les deux chiffres sont toujours affichés séparément et clairement libellés** (« Solde total » / « Gains de la saison ») |
+| Jeux du MVP | **Blackjack + roulette** ; poker affiché en grisé « Bientôt disponible » |
+| Rejoindre des amis | **Rooms avec code à 5 lettres**, compte obligatoire pour tous (pas de mode invité) |
+| Vérification d'âge | Date de naissance déclarée à la création du compte |
+| Langue | Français uniquement |
+| Équipe | Le porteur du projet et Benjamin |
+| Paiement | **Stripe**, prix toujours affichés **TTC (TVA incluse)** |
+
+Planche d'ambiance v1 (palette, typographies, composants, lobby, table desktop et mobile) : voir l'artefact de design associé.
