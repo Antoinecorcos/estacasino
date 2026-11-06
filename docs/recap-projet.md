@@ -226,3 +226,23 @@ Bronze, Argent, Or, Platine, Diamant, puis « Légende » réservé au top 100.
 | Paiement | **Stripe**, prix toujours affichés **TTC (TVA incluse)** |
 
 Planche d'ambiance v1 (palette, typographies, composants, lobby, table desktop et mobile) : voir l'artefact de design associé.
+
+---
+
+## 12. Décisions prises (tour de questions n° 2)
+
+| Sujet | Décision |
+|---|---|
+| Blackjack | 6 jeux, croupier reste à 17, blackjack payé 3 pour 2, doubler sur 2 cartes, séparer une fois, pas d'assurance |
+| Roulette | Européenne (un seul zéro), la roue tourne automatiquement |
+| Taille des rooms | 5 joueurs au blackjack, 8 à la roulette |
+| Droits de l'hôte | Fixe la mise minimum et maximum. Ne peut ni exclure ni verrouiller : la diffusion du code est sa responsabilité |
+| Room vide | Fermée après 15 minutes |
+| Jeu en solo | Obligatoire : un joueur seul doit pouvoir jouer au blackjack et à la roulette sans room |
+| Classement | Les parties en room privée comptent (jeux contre la maison, pas de collusion possible) |
+| Connexion | E-mail + **lien magique** (pas de mot de passe), **pseudo unique** |
+| Boutique | **Dès le MVP**, basique : avatars uniquement. Prix à valider ensemble |
+| Prix | Toujours affichés **TTC** ; Stripe Tax calcule la TVA incluse dans le prix |
+| Hébergement | Le code est poussé sur GitHub, déployé sur **Cloudflare** avec une base de données Cloudflare. Nom de domaine à venir |
+
+Architecture technique détaillée : voir `docs/architecture.md`.
