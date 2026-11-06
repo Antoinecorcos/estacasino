@@ -1,0 +1,33 @@
+{
+  "name": "estacasino",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build:client && npm run db:migrate:local && wrangler dev",
+    "dev:client": "vite",
+    "build": "npm run build:client",
+    "build:client": "vite build",
+    "deploy": "npm run build && wrangler d1 migrations apply estacasino --remote && wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply estacasino --local",
+    "db:migrate:remote": "wrangler d1 migrations apply estacasino --remote",
+    "typecheck": "tsc -p tsconfig.worker.json && tsc -p tsconfig.client.json",
+    "test": "vitest run",
+    "reset-password": "node scripts/reset-password.mjs"
+  },
+  "dependencies": {
+    "hono": "^4.6.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261104.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.6.0",
+    "vite": "^7.0.0",
+    "vitest": "^3.0.0",
+    "wrangler": "^4.40.0"
+  }
+}

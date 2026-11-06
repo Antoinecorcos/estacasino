@@ -1,0 +1,63 @@
+import React, { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { Entete, Pied } from "./components/Elements";
+import { Accueil, Connexion, Inscription, MotDePasseOublie } from "./pages/Auth";
+import { Boutique } from "./pages/Boutique";
+import { Classement } from "./pages/Classement";
+import { Lobby } from "./pages/Lobby";
+import { Mentions } from "./pages/Mentions";
+import { Profil } from "./pages/Profil";
+import { PageBlackjackSolo, PageGrandeRoue, PageRoom } from "./pages/Room";
+import { naviguer, useChemin } from "./router";
+import { SessionProvider, useSession } from "./session";
+import "./styles.css";
+
+const PAGES_PUBLIQUES: Record<string, () => React.JSX.Element | null> = {
+  "/inscription": Inscription,
+  "/connexion": Connexion,
+  "/mot-de-passe-oublie": MotDePasseOublie,
+  "/mentions": Mentions,
+  "/classement": Classement,
+  "/boutique": Boutique,
+};
+
+function Contenu() {
+  const chemin = useChemin();
+  const { moi, charge } = useSession();
+  if (!charge) return <main className="page" />;
+
+  const Publique = PAGES_PUBLIQUES[chemin];
+  if (Publique) return <Publique />;
+  if (!moi) {
+    if (chemin !== "/") {
+      queueMicrotask(() => naviguer("/connexion", true));
+      return null;
+    }
+    return <Accueil />;
+  }
+  if (chemin === "/") return <Lobby />;
+  if (chemin === "/blackjack") return <PageBlackjackSolo />;
+  if (chemin === "/roulette") return <PageGrandeRoue />;
+  if (chemin === "/profil") return <Profil />;
+  const room = /^\/room\/([A-Za-z]{5})$/.exec(chemin);
+  if (room) return <PageRoom code={room[1].toUpperCase()} />;
+  return (
+    <main className="page">
+      <div className="conteneur pile" style={{ gap: 12, alignItems: "flex-start" }}>
+        <h1 style={{ fontSize: 40 }}>Cette table n'existe pas.</h1>
+        <p className="italique accent">Le croupier a cherché partout. Même sous le tapis.</p>
+        <button type="button" className="btn btn-principal" onClick={() => naviguer("/")}>Retour au lobby</button>
+      </div>
+    </main>
+  );
+}
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <SessionProvider>
+      <Entete />
+      <Contenu />
+      <Pied />
+    </SessionProvider>
+  </StrictMode>,
+);

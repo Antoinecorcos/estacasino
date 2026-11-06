@@ -1,0 +1,112 @@
+# Estacasino
+
+Casino social **100 % fictif** : blackjack et roulette avec des jetons gratuits et sans valeur, des rooms privées par code de 5 lettres, des classements saisonniers et une boutique de cosmétiques (avatars) payée via Stripe.
+
+- **Front** : React + Vite (`src/client`)
+- **Serveur** : un Worker Cloudflare avec Hono (`src/worker`)
+- **Temps réel** : Durable Objects, un par room (`src/worker/rooms`)
+- **Base de données** : Cloudflare D1 (`migrations/`)
+- **Règles partagées** : cartes, blackjack, roulette, avatars, boutique (`src/shared`)
+
+Voir aussi `docs/recap-projet.md` (produit) et `docs/architecture.md` (technique).
+
+## Développement local
+
+```bash
+npm install
+```
+
+```bash
+npm run dev
+```
+
+Le site tourne sur http://localhost:8787 avec une base D1 et des Durable Objects simulés en local. Après une modification du front, relancez `npm run dev`, ou travaillez avec rechargement à chaud : `npx wrangler dev` dans un terminal et `npm run dev:client` dans un autre (http://localhost:5173).
+
+Pour tester les achats en local, créez un fichier `.dev.vars` (ignoré par git) :
+
+```
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+Vérifications :
+
+```bash
+npm run typecheck
+```
+
+```bash
+npm test
+```
+
+## Mise en ligne sur Cloudflare
+
+### 1. Créer la base D1
+
+Dans le tableau de bord Cloudflare (Storage & Databases → D1 → Create), créez une base nommée `estacasino`, ou en ligne de commande :
+
+```bash
+npx wrangler d1 create estacasino
+```
+
+Copiez l'identifiant obtenu dans `wrangler.jsonc` (`database_id`), puis commitez.
+
+### 2. Brancher le dépôt GitHub
+
+Workers & Pages → Create → Import a repository → `estacasino`, puis :
+
+- **Build command** : `npm run build`
+- **Deploy command** : `npx wrangler d1 migrations apply estacasino --remote && npx wrangler deploy`
+
+Chaque push sur la branche de production redéploie le site et applique les nouvelles migrations de base de données.
+
+### 3. Variables et secrets
+
+| Nom | Type | Où le définir |
+|---|---|---|
+| `APP_URL` | Variable | Dans `wrangler.jsonc` (`vars`) : l'URL publique, ex. `https://estacasino.fr`, sans « / » final |
+| `STRIPE_SECRET_KEY` | **Secret** | Worker → Settings → Variables and Secrets → Add → type *Secret* |
+| `STRIPE_WEBHOOK_SECRET` | **Secret** | Idem |
+
+Les bindings `DB`, `ROOMS_BLACKJACK` et `ROOMS_ROULETTE` sont créés automatiquement à partir de `wrangler.jsonc`. Tant que `STRIPE_SECRET_KEY` n'est pas défini, la boutique s'affiche avec « Bientôt disponible ».
+
+### 4. Stripe
+
+1. **Stripe Tax** : Settings → Tax → activez-le et ajoutez votre immatriculation (France). Les prix sont envoyés en *TVA incluse* (`tax_behavior: inclusive`) : le prix affiché est le prix payé.
+2. **Webhook** : Developers → Webhooks → Add endpoint
+   - URL : `https://<votre-domaine>/api/stripe/webhook`
+   - Événements : `checkout.session.completed` et `checkout.session.async_payment_succeeded`
+   - Copiez le *Signing secret* (`whsec_…`) dans le secret `STRIPE_WEBHOOK_SECRET`.
+3. Les produits n'ont pas besoin d'être créés dans Stripe : le catalogue est dans `src/shared/boutique.ts` et chaque paiement est créé avec son prix.
+
+### 5. Nom de domaine
+
+Worker → Settings → Domains & Routes → Add → Custom domain. Pensez à mettre à jour `APP_URL` et l'URL du webhook Stripe.
+
+## Opérations courantes
+
+### Mot de passe oublié
+
+Le joueur utilise d'abord son **code de secours** (donné à l'inscription) sur la page « Mot de passe oublié ». S'il l'a perdu aussi :
+
+```bash
+npm run reset-password -- <pseudo>
+```
+
+Le script écrit un mot de passe provisoire dans la base en ligne et l'affiche ; transmettez-le au joueur. Ajoutez `--local` pour la base de développement.
+
+### Ouvrir une nouvelle saison
+
+Les dates sont des horodatages en millisecondes (UTC). Exemple pour une saison de 6 semaines :
+
+```bash
+npx wrangler d1 execute estacasino --remote --command "INSERT INTO saisons (id, nom, debut, fin) VALUES (2, 'Saison 2', 1797116400000, 1800745200000)"
+```
+
+Le solde total des joueurs est conservé ; le classement repart de zéro avec la nouvelle saison.
+
+## Règles du produit à ne jamais casser
+
+- On ne vend **jamais** de jetons, ni directement ni indirectement. La boutique ne vend que des cosmétiques.
+- Aucun code ne relie la table `achats` aux jetons.
+- Tous les tirages sont faits sur le serveur (`crypto.getRandomValues`), jamais dans le navigateur.

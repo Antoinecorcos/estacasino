@@ -240,9 +240,23 @@ Planche d'ambiance v1 (palette, typographies, composants, lobby, table desktop e
 | Room vide | Fermée après 15 minutes |
 | Jeu en solo | Obligatoire : un joueur seul doit pouvoir jouer au blackjack et à la roulette sans room |
 | Classement | Les parties en room privée comptent (jeux contre la maison, pas de collusion possible) |
-| Connexion | E-mail + **lien magique** (pas de mot de passe), **pseudo unique** |
+| Connexion | ~~E-mail + lien magique~~ → remplacé au tour n° 3 par pseudo + mot de passe |
 | Boutique | **Dès le MVP**, basique : avatars uniquement. Prix à valider ensemble |
 | Prix | Toujours affichés **TTC** ; Stripe Tax calcule la TVA incluse dans le prix |
 | Hébergement | Le code est poussé sur GitHub, déployé sur **Cloudflare** avec une base de données Cloudflare. Nom de domaine à venir |
 
 Architecture technique détaillée : voir `docs/architecture.md`.
+
+---
+
+## 13. Décisions prises (tour de questions n° 3) et MVP v0.1
+
+| Sujet | Décision |
+|---|---|
+| Connexion | **Pseudo unique + mot de passe**, sans e-mail. Mot de passe oublié : code de secours donné à l'inscription, et script de réinitialisation pour l'équipe |
+| Prix | Accessoire **1,99 €**, avatar premium **2,99 €**, collection de 4 avatars **8,99 €** (TTC) |
+| Avatars | SVG modulaire construit en code : 3 avatars gratuits au choix à l'inscription, pièces gratuites et pièces premium |
+| Couleurs | Feutre vert bouteille et accent laiton. Des thèmes achetables pourront les changer plus tard |
+| Grande Roue | Un tirage toutes les 30 secondes, **seulement s'il y a quelqu'un** |
+
+**Version 0.1 livrée** : inscription, connexion, mot de passe oublié, lobby, blackjack solo et en room, roulette « La Grande Roue » et en room, rooms par code, bonus quotidien et filet de sécurité, classement de saison (général, blackjack, roulette), boutique Stripe d'avatars, éditeur d'avatar, page des règles et mentions. Voir le `README.md` pour la mise en ligne.

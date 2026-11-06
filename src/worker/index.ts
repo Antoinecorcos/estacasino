@@ -1,0 +1,404 @@
+import { Hono, type Context } from "hono";
+import { AVATARS_DEPART, lireAvatar, validerAvatar } from "../shared/avatar";
+import { PRODUITS, trouverProduit } from "../shared/boutique";
+import {
+  ALPHABET_CODE,
+  BLACKJACK_LIMITES_DEFAUT,
+  BONUS_QUOTIDIEN,
+  BONUS_SERIE_MAX,
+  BONUS_SERIE_PAR_JOUR,
+  CAPITAL_DEPART,
+  CLASSEMENT_MIN_PARTIES,
+  CODE_REGEX,
+  FILET_DELAI_MS,
+  FILET_MONTANT,
+  FILET_SEUIL,
+  type Jeu,
+  MDP_MIN,
+  PALIERS_MISE_MAX,
+  PALIERS_MISE_MIN,
+  PSEUDO_REGEX,
+  ROULETTE_LIMITES_DEFAUT,
+} from "../shared/regles";
+import { age, fermerSession, joueurConnecte, type JoueurSession, normaliserCodeSecours, nouveauCodeSecours, ouvrirSession } from "./auth";
+import { chaineAleatoire, hacherMotDePasse, sha256, verifierMotDePasse } from "./crypto";
+import { crediter, jourParis, saisonCourante, veille } from "./economie";
+import type { Env } from "./env";
+import { type ConfigRoom, ENTETE_CONFIG, ENTETE_IDENTITE, type Identite } from "./rooms/base";
+import { creerSessionCheckout, type SessionCheckoutTerminee, verifierSignatureWebhook } from "./stripe";
+
+export { BlackjackRoom } from "./rooms/blackjack";
+export { RouletteRoom } from "./rooms/roulette";
+
+type C = Context<{ Bindings: Env }>;
+const app = new Hono<{ Bindings: Env }>().basePath("/api");
+
+const erreur = (c: C, message: string, statut: 400 | 401 | 403 | 404 | 409 | 429 | 500 | 503 = 400) =>
+  c.json({ erreur: message }, statut);
+
+async function exigerJoueur(c: C): Promise<JoueurSession | Response> {
+  const j = await joueurConnecte(c);
+  return j ?? erreur(c, "Connectez-vous pour continuer.", 401);
+}
+
+async function corps<T>(c: C): Promise<Partial<T>> {
+  try {
+    return (await c.req.json()) as Partial<T>;
+  } catch {
+    return {};
+  }
+}
+
+// ───────────── Comptes ─────────────
+
+app.post("/auth/inscription", async (c) => {
+  const b = await corps<{ pseudo: string; mdp: string; dateNaissance: string; avatar: number; cgu: boolean }>(c);
+  const pseudo = (b.pseudo ?? "").trim();
+  if (!PSEUDO_REGEX.test(pseudo)) return erreur(c, "Pseudo : 3 à 16 caractères (lettres, chiffres, « _ », « - » ou « . »).");
+  if (typeof b.mdp !== "string" || b.mdp.length < MDP_MIN) return erreur(c, `Mot de passe : ${MDP_MIN} caractères minimum.`);
+  const ans = age(b.dateNaissance ?? "");
+  if (ans === null || ans > 120) return erreur(c, "Date de naissance invalide.");
+  if (ans < 18) return erreur(c, "Estacasino est réservé aux personnes de 18 ans et plus.", 403);
+  if (b.cgu !== true) return erreur(c, "Vous devez accepter les conditions d'utilisation.");
+  const depart = AVATARS_DEPART[Number(b.avatar)] ?? AVATARS_DEPART[0];
+
+  const existe = await c.env.DB.prepare("SELECT 1 FROM joueurs WHERE pseudo = ?").bind(pseudo).first();
+  if (existe) return erreur(c, "Ce pseudo est déjà pris.", 409);
+
+  const id = crypto.randomUUID();
+  const codeSecours = nouveauCodeSecours();
+  const now = Date.now();
+  try {
+    await c.env.DB.batch([
+      c.env.DB.prepare(
+        "INSERT INTO joueurs (id, pseudo, mdp_hash, secours_hash, date_naissance, solde, avatar, cree_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      ).bind(id, pseudo, await hacherMotDePasse(b.mdp), await sha256(normaliserCodeSecours(codeSecours)), b.dateNaissance, CAPITAL_DEPART, JSON.stringify(depart.config), now),
+      c.env.DB.prepare("INSERT INTO transactions_jetons (joueur_id, montant, type, le) VALUES (?, ?, 'depart', ?)").bind(id, CAPITAL_DEPART, now),
+    ]);
+  } catch {
+    return erreur(c, "Ce pseudo est déjà pris.", 409);
+  }
+  await ouvrirSession(c, id);
+  return c.json({ ok: true, codeSecours });
+});
+
+/** Limite simple contre les essais de mots de passe : 10 échecs par pseudo et par quart d'heure. */
+async function tropDEssais(c: C, pseudo: string): Promise<boolean> {
+  const depuis = Date.now() - 15 * 60 * 1000;
+  const r = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM tentatives_connexion WHERE pseudo = ? AND le > ?").bind(pseudo, depuis).first<{ n: number }>();
+  return (r?.n ?? 0) >= 10;
+}
+async function noterEchec(c: C, pseudo: string): Promise<void> {
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT INTO tentatives_connexion (pseudo, le) VALUES (?, ?)").bind(pseudo, Date.now()),
+    c.env.DB.prepare("DELETE FROM tentatives_connexion WHERE le < ?").bind(Date.now() - 24 * 60 * 60 * 1000),
+  ]);
+}
+
+app.post("/auth/connexion", async (c) => {
+  const b = await corps<{ pseudo: string; mdp: string }>(c);
+  const pseudo = (b.pseudo ?? "").trim();
+  if (!pseudo || !b.mdp) return erreur(c, "Pseudo et mot de passe requis.");
+  if (await tropDEssais(c, pseudo)) return erreur(c, "Trop d'essais. Réessayez dans quelques minutes.", 429);
+  const j = await c.env.DB.prepare("SELECT id, mdp_hash FROM joueurs WHERE pseudo = ?").bind(pseudo).first<{ id: string; mdp_hash: string }>();
+  if (!j || !(await verifierMotDePasse(b.mdp, j.mdp_hash))) {
+    await noterEchec(c, pseudo);
+    return erreur(c, "Pseudo ou mot de passe incorrect.", 401);
+  }
+  await ouvrirSession(c, j.id);
+  return c.json({ ok: true });
+});
+
+app.post("/auth/deconnexion", async (c) => {
+  await fermerSession(c);
+  return c.json({ ok: true });
+});
+
+/** Mot de passe oublié : pseudo + code de secours → nouveau mot de passe et nouveau code de secours. */
+app.post("/auth/reinitialiser", async (c) => {
+  const b = await corps<{ pseudo: string; codeSecours: string; mdp: string }>(c);
+  const pseudo = (b.pseudo ?? "").trim();
+  if (!pseudo || !b.codeSecours) return erreur(c, "Pseudo et code de secours requis.");
+  if (typeof b.mdp !== "string" || b.mdp.length < MDP_MIN) return erreur(c, `Mot de passe : ${MDP_MIN} caractères minimum.`);
+  if (await tropDEssais(c, pseudo)) return erreur(c, "Trop d'essais. Réessayez dans quelques minutes.", 429);
+  const j = await c.env.DB.prepare("SELECT id, secours_hash FROM joueurs WHERE pseudo = ?").bind(pseudo).first<{ id: string; secours_hash: string }>();
+  if (!j || j.secours_hash !== (await sha256(normaliserCodeSecours(b.codeSecours)))) {
+    await noterEchec(c, pseudo);
+    return erreur(c, "Pseudo ou code de secours incorrect.", 401);
+  }
+  const codeSecours = nouveauCodeSecours();
+  await c.env.DB.batch([
+    c.env.DB.prepare("UPDATE joueurs SET mdp_hash = ?, secours_hash = ? WHERE id = ?").bind(await hacherMotDePasse(b.mdp), await sha256(normaliserCodeSecours(codeSecours)), j.id),
+    c.env.DB.prepare("DELETE FROM sessions WHERE joueur_id = ?").bind(j.id),
+  ]);
+  await ouvrirSession(c, j.id);
+  return c.json({ ok: true, codeSecours });
+});
+
+app.post("/moi/mdp", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  const b = await corps<{ ancien: string; mdp: string }>(c);
+  if (typeof b.mdp !== "string" || b.mdp.length < MDP_MIN) return erreur(c, `Mot de passe : ${MDP_MIN} caractères minimum.`);
+  const j = await c.env.DB.prepare("SELECT mdp_hash FROM joueurs WHERE id = ?").bind(moi.id).first<{ mdp_hash: string }>();
+  if (!j || !(await verifierMotDePasse(b.ancien ?? "", j.mdp_hash))) return erreur(c, "Mot de passe actuel incorrect.", 401);
+  await c.env.DB.prepare("UPDATE joueurs SET mdp_hash = ? WHERE id = ?").bind(await hacherMotDePasse(b.mdp), moi.id).run();
+  return c.json({ ok: true });
+});
+
+app.post("/moi/code-secours", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  const codeSecours = nouveauCodeSecours();
+  await c.env.DB.prepare("UPDATE joueurs SET secours_hash = ? WHERE id = ?").bind(await sha256(normaliserCodeSecours(codeSecours)), moi.id).run();
+  return c.json({ ok: true, codeSecours });
+});
+
+// ───────────── Profil, soldes et bonus ─────────────
+
+function montantBonus(serie: number): number {
+  return BONUS_QUOTIDIEN + Math.min(BONUS_SERIE_PAR_JOUR * (serie - 1), BONUS_SERIE_MAX);
+}
+
+app.get("/moi", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  const j = await c.env.DB.prepare("SELECT bonus_dernier, bonus_serie, filet_dernier FROM joueurs WHERE id = ?")
+    .bind(moi.id)
+    .first<{ bonus_dernier: string | null; bonus_serie: number; filet_dernier: number | null }>();
+  const saison = await saisonCourante(c.env.DB);
+  const stats = saison
+    ? await c.env.DB.prepare("SELECT gains_nets, mains FROM stats_saison WHERE joueur_id = ? AND saison_id = ?").bind(moi.id, saison.id).first<{ gains_nets: number; mains: number }>()
+    : null;
+  let rang: number | null = null;
+  if (saison && stats && stats.mains >= CLASSEMENT_MIN_PARTIES) {
+    const r = await c.env.DB.prepare("SELECT COUNT(*) + 1 AS rang FROM stats_saison WHERE saison_id = ? AND mains >= ? AND gains_nets > ?")
+      .bind(saison.id, CLASSEMENT_MIN_PARTIES, stats.gains_nets)
+      .first<{ rang: number }>();
+    rang = r?.rang ?? null;
+  }
+  const inventaire = await c.env.DB.prepare("SELECT piece FROM inventaire WHERE joueur_id = ?").bind(moi.id).all<{ piece: string }>();
+
+  const aujourdHui = jourParis();
+  const bonusDispo = j?.bonus_dernier !== aujourdHui;
+  const serieSuivante = j?.bonus_dernier === veille(aujourdHui) ? (j?.bonus_serie ?? 0) + 1 : 1;
+  const filetProchain = (j?.filet_dernier ?? 0) + FILET_DELAI_MS;
+  return c.json({
+    id: moi.id,
+    pseudo: moi.pseudo,
+    solde: moi.solde,
+    avatar: lireAvatar(moi.avatar),
+    inventaire: inventaire.results.map((x) => x.piece),
+    saison: saison ? { nom: saison.nom, fin: saison.fin, gains: stats?.gains_nets ?? 0, parties: stats?.mains ?? 0, rang, minParties: CLASSEMENT_MIN_PARTIES } : null,
+    bonus: { disponible: bonusDispo, montant: montantBonus(serieSuivante), serie: bonusDispo ? serieSuivante : (j?.bonus_serie ?? 1) },
+    filet: { seuil: FILET_SEUIL, montant: FILET_MONTANT, disponible: moi.solde < FILET_SEUIL && Date.now() >= filetProchain, prochain: filetProchain },
+  });
+});
+
+app.post("/bonus/quotidien", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  const aujourdHui = jourParis();
+  const j = await c.env.DB.prepare("SELECT bonus_dernier, bonus_serie FROM joueurs WHERE id = ?").bind(moi.id).first<{ bonus_dernier: string | null; bonus_serie: number }>();
+  const serie = j?.bonus_dernier === veille(aujourdHui) ? (j?.bonus_serie ?? 0) + 1 : 1;
+  // Mise à jour conditionnelle : un seul bonus par jour, même en cas de double clic.
+  const maj = await c.env.DB.prepare("UPDATE joueurs SET bonus_dernier = ?, bonus_serie = ? WHERE id = ? AND (bonus_dernier IS NULL OR bonus_dernier <> ?)")
+    .bind(aujourdHui, serie, moi.id, aujourdHui)
+    .run();
+  if (maj.meta.changes !== 1) return erreur(c, "Bonus déjà récupéré aujourd'hui. Revenez demain !", 409);
+  const montant = montantBonus(serie);
+  const solde = await crediter(c.env.DB, moi.id, montant, "bonus", null, null);
+  return c.json({ ok: true, montant, serie, solde });
+});
+
+app.post("/bonus/filet", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  const now = Date.now();
+  const maj = await c.env.DB.prepare("UPDATE joueurs SET filet_dernier = ? WHERE id = ? AND solde < ? AND (filet_dernier IS NULL OR filet_dernier <= ?)")
+    .bind(now, moi.id, FILET_SEUIL, now - FILET_DELAI_MS)
+    .run();
+  if (maj.meta.changes !== 1) return erreur(c, "Le filet de sécurité n'est pas disponible pour le moment.", 409);
+  const solde = await crediter(c.env.DB, moi.id, FILET_MONTANT, "filet", null, null);
+  return c.json({ ok: true, montant: FILET_MONTANT, solde });
+});
+
+app.put("/moi/avatar", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  const b = await corps<{ avatar: unknown }>(c);
+  const inv = await c.env.DB.prepare("SELECT piece FROM inventaire WHERE joueur_id = ?").bind(moi.id).all<{ piece: string }>();
+  const possede = new Set(inv.results.map((x) => x.piece));
+  const avatar = validerAvatar(b.avatar, (cle) => possede.has(cle));
+  if (!avatar) return erreur(c, "Cet avatar contient une pièce que vous ne possédez pas.");
+  await c.env.DB.prepare("UPDATE joueurs SET avatar = ? WHERE id = ?").bind(JSON.stringify(avatar), moi.id).run();
+  return c.json({ ok: true, avatar });
+});
+
+// ───────────── Classement ─────────────
+
+app.get("/classement", async (c) => {
+  const saison = await saisonCourante(c.env.DB);
+  if (!saison) return c.json({ saison: null, lignes: [] });
+  const jeu = c.req.query("jeu");
+  const [colGains, colParties] =
+    jeu === "blackjack" ? ["gains_bj", "mains_bj"] : jeu === "roulette" ? ["gains_roulette", "tours_roulette"] : ["gains_nets", "mains"];
+  const lignes = await c.env.DB.prepare(
+    `SELECT j.pseudo, j.avatar, s.${colGains} AS gains, s.${colParties} AS parties
+     FROM stats_saison s JOIN joueurs j ON j.id = s.joueur_id
+     WHERE s.saison_id = ? AND s.${colParties} >= ?
+     ORDER BY gains DESC, parties ASC LIMIT 100`,
+  )
+    .bind(saison.id, CLASSEMENT_MIN_PARTIES)
+    .all<{ pseudo: string; avatar: string; gains: number; parties: number }>();
+  return c.json({
+    saison: { nom: saison.nom, debut: saison.debut, fin: saison.fin },
+    minParties: CLASSEMENT_MIN_PARTIES,
+    lignes: lignes.results.map((l, i) => ({ rang: i + 1, pseudo: l.pseudo, avatar: lireAvatar(l.avatar), gains: l.gains, parties: l.parties })),
+  });
+});
+
+// ───────────── Rooms et temps réel ─────────────
+
+app.post("/rooms", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  const b = await corps<{ jeu: Jeu; min: number; max: number }>(c);
+  if (b.jeu !== "blackjack" && b.jeu !== "roulette") return erreur(c, "Jeu inconnu.");
+  const defaut = b.jeu === "blackjack" ? BLACKJACK_LIMITES_DEFAUT : ROULETTE_LIMITES_DEFAUT;
+  const min = Number(b.min ?? defaut.min);
+  const max = Number(b.max ?? defaut.max);
+  if (!(PALIERS_MISE_MIN as readonly number[]).includes(min) || !(PALIERS_MISE_MAX as readonly number[]).includes(max) || min > max)
+    return erreur(c, "Limites de mise invalides.");
+  for (let essai = 0; essai < 8; essai++) {
+    const code = chaineAleatoire(ALPHABET_CODE, 5);
+    const r = await c.env.DB.prepare(
+      `INSERT INTO rooms (code, jeu, hote_id, mise_min, mise_max, ouverte, cree_le) VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6)
+       ON CONFLICT (code) DO UPDATE SET jeu = ?2, hote_id = ?3, mise_min = ?4, mise_max = ?5, ouverte = 1, cree_le = ?6
+       WHERE rooms.ouverte = 0 AND rooms.cree_le < ?7`,
+    )
+      .bind(code, b.jeu, moi.id, min, max, Date.now(), Date.now() - 24 * 60 * 60 * 1000)
+      .run();
+    if (r.meta.changes === 1) return c.json({ code, jeu: b.jeu });
+  }
+  return erreur(c, "Impossible de créer la room, réessayez.", 503);
+});
+
+async function lireRoom(c: C, code: string) {
+  return c.env.DB.prepare(
+    "SELECT r.code, r.jeu, r.mise_min, r.mise_max, r.ouverte, r.hote_id, j.pseudo AS hote FROM rooms r JOIN joueurs j ON j.id = r.hote_id WHERE r.code = ?",
+  )
+    .bind(code)
+    .first<{ code: string; jeu: Jeu; mise_min: number; mise_max: number; ouverte: number; hote_id: string; hote: string }>();
+}
+
+app.get("/rooms/:code", async (c) => {
+  const code = c.req.param("code").toUpperCase();
+  if (!CODE_REGEX.test(code)) return erreur(c, "Code invalide : 5 lettres.", 404);
+  const r = await lireRoom(c, code);
+  if (!r || !r.ouverte) return erreur(c, "Aucune room ouverte avec ce code.", 404);
+  return c.json({ code: r.code, jeu: r.jeu, min: r.mise_min, max: r.mise_max, hote: r.hote });
+});
+
+/** Relaie une connexion WebSocket vers le Durable Object de la room, avec l'identité vérifiée du joueur. */
+async function versRoom(c: C, ns: DurableObjectNamespace, nom: string, config: ConfigRoom): Promise<Response> {
+  if (c.req.header("Upgrade") !== "websocket") return erreur(c, "WebSocket attendu.", 400);
+  const moi = await joueurConnecte(c);
+  if (!moi) return erreur(c, "Connectez-vous pour jouer.", 401);
+  const ident: Identite = { id: moi.id, pseudo: moi.pseudo, avatar: lireAvatar(moi.avatar), solde: moi.solde };
+  const headers = new Headers(c.req.raw.headers);
+  headers.set(ENTETE_IDENTITE, encodeURIComponent(JSON.stringify(ident)));
+  headers.set(ENTETE_CONFIG, encodeURIComponent(JSON.stringify(config)));
+  const stub = ns.get(ns.idFromName(nom));
+  return stub.fetch(new Request(c.req.url, { headers }));
+}
+
+app.get("/jeu/blackjack/solo/ws", async (c) => {
+  const moi = await joueurConnecte(c);
+  if (!moi) return erreur(c, "Connectez-vous pour jouer.", 401);
+  return versRoom(c, c.env.ROOMS_BLACKJACK, `solo:${moi.id}`, {
+    code: null, solo: true, hoteId: moi.id, nom: "Table privée", ...BLACKJACK_LIMITES_DEFAUT,
+  });
+});
+
+app.get("/jeu/roulette/grande-roue/ws", (c) =>
+  versRoom(c, c.env.ROOMS_ROULETTE, "grande-roue", { code: null, solo: false, hoteId: null, nom: "La Grande Roue", ...ROULETTE_LIMITES_DEFAUT }),
+);
+
+app.get("/rooms/:code/ws", async (c) => {
+  const code = c.req.param("code").toUpperCase();
+  const r = CODE_REGEX.test(code) ? await lireRoom(c, code) : null;
+  if (!r || !r.ouverte) return erreur(c, "Aucune room ouverte avec ce code.", 404);
+  const ns = r.jeu === "blackjack" ? c.env.ROOMS_BLACKJACK : c.env.ROOMS_ROULETTE;
+  return versRoom(c, ns, `room:${code}:${r.hote_id}`, {
+    code, solo: false, hoteId: r.hote_id, nom: `Room ${code}`, min: r.mise_min, max: r.mise_max,
+  });
+});
+
+// ───────────── Boutique (cosmétiques uniquement) ─────────────
+
+app.get("/boutique", async (c) => {
+  const moi = await joueurConnecte(c);
+  const possede = moi
+    ? new Set((await c.env.DB.prepare("SELECT piece FROM inventaire WHERE joueur_id = ?").bind(moi.id).all<{ piece: string }>()).results.map((x) => x.piece))
+    : new Set<string>();
+  return c.json({
+    paiementActif: Boolean(c.env.STRIPE_SECRET_KEY),
+    produits: PRODUITS.map((p) => ({ ...p, possede: p.pieces.every((x) => possede.has(x)) })),
+  });
+});
+
+app.post("/boutique/checkout", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  if (!c.env.STRIPE_SECRET_KEY) return erreur(c, "La boutique n'est pas encore ouverte.", 503);
+  const b = await corps<{ produit: string; renonciation: boolean }>(c);
+  const produit = trouverProduit(b.produit ?? "");
+  if (!produit) return erreur(c, "Produit inconnu.", 404);
+  if (b.renonciation !== true) return erreur(c, "Veuillez confirmer la livraison immédiate du contenu numérique.");
+  const possede = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM inventaire WHERE joueur_id = ? AND piece IN (${produit.pieces.map(() => "?").join(",")})`)
+    .bind(moi.id, ...produit.pieces)
+    .first<{ n: number }>();
+  if ((possede?.n ?? 0) === produit.pieces.length) return erreur(c, "Vous possédez déjà ce produit.", 409);
+  try {
+    const session = await creerSessionCheckout(c.env.STRIPE_SECRET_KEY, produit, moi, c.env.APP_URL);
+    return c.json({ url: session.url });
+  } catch (e) {
+    console.error("stripe", e);
+    return erreur(c, "Le paiement est momentanément indisponible.", 503);
+  }
+});
+
+app.post("/stripe/webhook", async (c) => {
+  if (!c.env.STRIPE_WEBHOOK_SECRET) return erreur(c, "Webhook non configuré.", 503);
+  const brut = await c.req.text();
+  if (!(await verifierSignatureWebhook(brut, c.req.header("Stripe-Signature") ?? null, c.env.STRIPE_WEBHOOK_SECRET)))
+    return erreur(c, "Signature invalide.", 400);
+  const evt = JSON.parse(brut) as { type: string; data: { object: SessionCheckoutTerminee } };
+  if (evt.type !== "checkout.session.completed" && evt.type !== "checkout.session.async_payment_succeeded") return c.json({ recu: true });
+  const s = evt.data.object;
+  if (s.payment_status !== "paid") return c.json({ recu: true });
+  const joueurId = s.metadata?.joueur_id;
+  const produit = trouverProduit(s.metadata?.produit ?? "");
+  if (!joueurId || !produit) return c.json({ recu: true });
+  const now = Date.now();
+  // Idempotent : la session Stripe est unique dans `achats`, et les pièces déjà possédées sont ignorées.
+  // Un achat ne crédite JAMAIS de jetons.
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT OR IGNORE INTO achats (joueur_id, produit, montant_centimes, stripe_session, le) VALUES (?, ?, ?, ?, ?)").bind(
+      joueurId, produit.id, s.amount_total ?? produit.prixCentimes, s.id, now,
+    ),
+    ...produit.pieces.map((piece) =>
+      c.env.DB.prepare("INSERT OR IGNORE INTO inventaire (joueur_id, piece, origine, le) VALUES (?, ?, 'achat', ?)").bind(joueurId, piece, now),
+    ),
+  ]);
+  return c.json({ recu: true });
+});
+
+app.notFound((c) => erreur(c, "Introuvable.", 404));
+app.onError((e, c) => {
+  console.error(e);
+  return erreur(c, "Erreur interne.", 500);
+});
+
+export default app;

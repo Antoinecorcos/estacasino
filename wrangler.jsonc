@@ -1,0 +1,38 @@
+{
+  // Configuration Cloudflare d'Estacasino.
+  // Les secrets (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET) ne sont JAMAIS ici :
+  // ils se saisissent dans le tableau de bord Cloudflare ou avec `wrangler secret put`.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "estacasino",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist/client",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    // URL publique du site, sans « / » final. À remplacer par le nom de domaine.
+    "APP_URL": "http://localhost:8787"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "estacasino",
+      // Remplacer par l'identifiant donné par `wrangler d1 create estacasino`.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROOMS_BLACKJACK", "class_name": "BlackjackRoom" },
+      { "name": "ROOMS_ROULETTE", "class_name": "RouletteRoom" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["BlackjackRoom", "RouletteRoom"] }
+  ],
+  "observability": { "enabled": true }
+}
