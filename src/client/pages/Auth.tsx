@@ -4,6 +4,7 @@ import { MDP_MIN } from "../../shared/regles";
 import { api } from "../api";
 import { Avatar } from "../components/Avatar";
 import { Carte, Page } from "../components/Elements";
+import { useTurnstile } from "../components/Turnstile";
 import { Lien, naviguer } from "../router";
 import { useSession } from "../session";
 
@@ -103,13 +104,14 @@ export function Inscription() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState(false);
   const [code, setCode] = useState<string | null>(null);
+  const humain = useTurnstile();
 
   const envoyer = async (e: FormEvent) => {
     e.preventDefault();
     setErreur(null);
     setEnvoi(true);
     try {
-      const r = await api<{ codeSecours: string }>("/auth/inscription", { corps: { pseudo, mdp, dateNaissance: naissance, avatar, cgu } });
+      const r = await api<{ codeSecours: string }>("/auth/inscription", { corps: { pseudo, mdp, dateNaissance: naissance, avatar, cgu, turnstile: humain.jeton } });
       setCode(r.codeSecours);
     } catch (err) {
       setErreur((err as Error).message);
@@ -168,8 +170,9 @@ export function Inscription() {
                 fictifs et sans aucune valeur.
               </span>
             </label>
+            {humain.zone}
             {erreur && <div className="erreur" role="alert">{erreur}</div>}
-            <button type="submit" className="btn btn-principal btn-large" disabled={envoi}>
+            <button type="submit" className="btn btn-principal btn-large" disabled={envoi || (humain.requis && !humain.jeton)}>
               {envoi ? "Un instant…" : "Créer mon compte"}
             </button>
             <p className="muet" style={{ fontSize: 14, textAlign: "center" }}>
@@ -239,12 +242,13 @@ export function MotDePasseOublie() {
   const [mdp, setMdp] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
   const [nouveauCode, setNouveauCode] = useState<string | null>(null);
+  const humain = useTurnstile();
 
   const envoyer = async (e: FormEvent) => {
     e.preventDefault();
     setErreur(null);
     try {
-      const r = await api<{ codeSecours: string }>("/auth/reinitialiser", { corps: { pseudo, codeSecours: code, mdp } });
+      const r = await api<{ codeSecours: string }>("/auth/reinitialiser", { corps: { pseudo, codeSecours: code, mdp, turnstile: humain.jeton } });
       setNouveauCode(r.codeSecours);
     } catch (err) {
       setErreur((err as Error).message);
@@ -282,8 +286,9 @@ export function MotDePasseOublie() {
               <label htmlFor="o-mdp">Nouveau mot de passe</label>
               <input id="o-mdp" type="password" className="input" value={mdp} onChange={(e) => setMdp(e.target.value)} autoComplete="new-password" required minLength={MDP_MIN} />
             </div>
+            {humain.zone}
             {erreur && <div className="erreur" role="alert">{erreur}</div>}
-            <button type="submit" className="btn btn-principal btn-large">
+            <button type="submit" className="btn btn-principal btn-large" disabled={humain.requis && !humain.jeton}>
               Réinitialiser
             </button>
             <p className="muet" style={{ fontSize: 13 }}>

@@ -26,15 +26,16 @@ Objectif : pouvoir ouvrir à 10-30 amis sans risque de perdre des jetons, d'êtr
 
 | | Tâche |
 |---|---|
-| 🤖 | **Remboursement automatique** des mises si une room redémarre en pleine main (aujourd'hui, la mise serait débitée sans être réglée) |
-| 🤖 | **Protection anti-robots** à l'inscription et à la connexion (Cloudflare Turnstile, gratuit, sans cookie publicitaire) |
-| 🤖 | Limites de débit sur les actions de jeu et l'API |
-| 🤖 | Filtre de pseudos (insultes, usurpation « admin », « croupier »…) |
-| 🤖 | **Petit espace d'administration** : chercher un joueur, réinitialiser un mot de passe, suspendre un compte, voir son journal de jetons et ses achats |
-| 🤖 | Suppression de compte par le joueur (RGPD) |
-| 🤖 | Vérifications automatiques à chaque push (GitHub Actions : types + tests) |
-| 🤖 | Mesure d'audience sans cookie (Cloudflare Web Analytics) |
-| 🤖 | Mode mobile de la roulette (le tapis sous la roue, sans long défilement) |
+| ✅ | **Remboursement automatique** des mises si une room redémarre en pleine main |
+| ✅ | **Protection anti-robots** à l'inscription et à la réinitialisation (Turnstile) : code prêt, à activer avec les clés 🙋 |
+| ✅ | Limites de débit : 10 requêtes/min sur la connexion, 150/min sur l'API (par adresse IP), 12 actions/s en room |
+| ✅ | Filtre de pseudos (grossièretés, noms réservés « admin », « croupier »…) |
+| ✅ | **Espace d'administration** `/admin` : résumé, recherche, fiche joueur, mot de passe provisoire, suspension, journal |
+| ✅ | Suppression de compte par le joueur (RGPD) |
+| ✅ | Vérifications automatiques à chaque push (GitHub Actions : types, tests, compilation) |
+| 🙋 | Mesure d'audience sans cookie : tableau de bord Cloudflare → *Web Analytics* → *Add a site* → `estacasino.com` (activation automatique) |
+| ✅ | Mode mobile de la roulette (roue, tapis, commandes collées en bas) |
+| 🙋 | Me nommer… ou plutôt vous nommer administrateur (commande dans le `README.md`) |
 
 ## Étape 3 : conformité (en parallèle de l'étape 2)
 

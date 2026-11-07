@@ -2,6 +2,7 @@ import React, { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Entete, Pied } from "./components/Elements";
 import { Accueil, Connexion, Inscription, MotDePasseOublie } from "./pages/Auth";
+import { Admin } from "./pages/Admin";
 import { Boutique } from "./pages/Boutique";
 import { Classement } from "./pages/Classement";
 import { Lobby } from "./pages/Lobby";
@@ -47,6 +48,7 @@ function Contenu() {
   if (chemin === "/roulette") return <PageGrandeRoue />;
   if (chemin === "/roulette/solo") return <PageRouletteSolo />;
   if (chemin === "/profil") return <Profil />;
+  if (chemin === "/admin") return <Admin />;
   const room = /^\/room\/([A-Za-z]{5})$/.exec(chemin);
   if (room) return <PageRoom code={room[1].toUpperCase()} />;
   return (

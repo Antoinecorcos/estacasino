@@ -76,3 +76,17 @@ describe("avatars et boutique", () => {
     }
   });
 });
+
+describe("pseudos", async () => {
+  const { verifierPseudo } = await import("./pseudo");
+  it("accepte les pseudos ordinaires, y compris proches de mots interdits", () => {
+    for (const p of ["LeBaron", "Margaux_92", "Pedro", "Unique", "Computer", "Violette", "Drapeau", "Bitcoin", "Dickens"]) expect(verifierPseudo(p)).toEqual({ ok: true });
+  });
+  it("refuse les noms réservés et les grossièretés, même déguisés", () => {
+    for (const p of ["Admin", "4dm1n", "Le_Croupier", "EstaCasino", "Modo42", "c0nnard", "F.U.C.K", "pd", "x-ntm-x"]) expect(verifierPseudo(p).ok).toBe(false);
+  });
+  it("refuse les formats invalides", () => {
+    expect(verifierPseudo("ab").ok).toBe(false);
+    expect(verifierPseudo("avec espace").ok).toBe(false);
+  });
+});

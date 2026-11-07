@@ -23,6 +23,7 @@ export interface Moi {
   pseudo: string;
   solde: number;
   avatar: ConfigAvatar;
+  role: string;
   theme: string;
   inventaire: string[];
   saison: { nom: string; fin: number; gains: number; parties: number; rang: number | null; minParties: number } | null;

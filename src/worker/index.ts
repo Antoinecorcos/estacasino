@@ -1,6 +1,7 @@
 import { Hono, type Context } from "hono";
 import { AVATARS_DEPART, lireAvatar, validerAvatar } from "../shared/avatar";
 import { PRODUITS, trouverProduit } from "../shared/boutique";
+import { verifierPseudo } from "../shared/pseudo";
 import {
   ALPHABET_CODE,
   BLACKJACK_LIMITES_DEFAUT,
@@ -17,7 +18,6 @@ import {
   MDP_MIN,
   PALIERS_MISE_MAX,
   PALIERS_MISE_MIN,
-  PSEUDO_REGEX,
   ROULETTE_LIMITES_DEFAUT,
 } from "../shared/regles";
 import { age, fermerSession, joueurConnecte, type JoueurSession, normaliserCodeSecours, nouveauCodeSecours, ouvrirSession } from "./auth";
@@ -27,6 +27,8 @@ import type { Env } from "./env";
 import { type ConfigRoom, ENTETE_CONFIG, ENTETE_IDENTITE, type Identite } from "./rooms/base";
 import { themeAccessible, trouverTheme } from "../shared/themes";
 import { creerSessionCheckout, type SessionCheckoutTerminee, verifierSignatureWebhook } from "./stripe";
+
+import { admin } from "./admin";
 
 export { BlackjackRoom } from "./rooms/blackjack";
 export { RouletteRoom } from "./rooms/roulette";
@@ -50,12 +52,46 @@ async function corps<T>(c: C): Promise<Partial<T>> {
   }
 }
 
+// ───────────── Protections ─────────────
+
+const ip = (c: C) => c.req.header("CF-Connecting-IP") ?? "local";
+
+// Limites de débit par adresse IP (les webhooks Stripe et les WebSockets de jeu n'y sont pas soumis).
+app.use("*", async (c, next) => {
+  const chemin = new URL(c.req.url).pathname;
+  if (chemin === "/api/stripe/webhook" || chemin.endsWith("/ws")) return next();
+  const limite = chemin.startsWith("/api/auth/") ? c.env.LIMITE_AUTH : c.env.LIMITE_API;
+  if (limite && !(await limite.limit({ key: ip(c) })).success)
+    return erreur(c, "Doucement ! Trop de demandes, réessayez dans une minute.", 429);
+  return next();
+});
+
+/** Vérifie le jeton Cloudflare Turnstile quand la protection est configurée. */
+async function humainVerifie(c: C, jeton: unknown): Promise<boolean> {
+  if (!c.env.TURNSTILE_SECRET) return true;
+  if (typeof jeton !== "string" || !jeton) return false;
+  const f = new FormData();
+  f.set("secret", c.env.TURNSTILE_SECRET);
+  f.set("response", jeton);
+  f.set("remoteip", ip(c));
+  try {
+    const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: f });
+    return ((await r.json()) as { success?: boolean }).success === true;
+  } catch {
+    return false;
+  }
+}
+
+app.get("/config", (c) => c.json({ turnstile: c.env.TURNSTILE_SECRET && c.env.TURNSTILE_SITE_KEY ? c.env.TURNSTILE_SITE_KEY : null }));
+
 // ───────────── Comptes ─────────────
 
 app.post("/auth/inscription", async (c) => {
-  const b = await corps<{ pseudo: string; mdp: string; dateNaissance: string; avatar: number; cgu: boolean }>(c);
+  const b = await corps<{ pseudo: string; mdp: string; dateNaissance: string; avatar: number; cgu: boolean; turnstile: string }>(c);
+  if (!(await humainVerifie(c, b.turnstile))) return erreur(c, "Vérification anti-robot échouée, réessayez.", 403);
   const pseudo = (b.pseudo ?? "").trim();
-  if (!PSEUDO_REGEX.test(pseudo)) return erreur(c, "Pseudo : 3 à 16 caractères (lettres, chiffres, « _ », « - » ou « . »).");
+  const verdict = verifierPseudo(pseudo);
+  if (!verdict.ok) return erreur(c, verdict.raison);
   if (typeof b.mdp !== "string" || b.mdp.length < MDP_MIN) return erreur(c, `Mot de passe : ${MDP_MIN} caractères minimum.`);
   const ans = age(b.dateNaissance ?? "");
   if (ans === null || ans > 120) return erreur(c, "Date de naissance invalide.");
@@ -101,11 +137,14 @@ app.post("/auth/connexion", async (c) => {
   const pseudo = (b.pseudo ?? "").trim();
   if (!pseudo || !b.mdp) return erreur(c, "Pseudo et mot de passe requis.");
   if (await tropDEssais(c, pseudo)) return erreur(c, "Trop d'essais. Réessayez dans quelques minutes.", 429);
-  const j = await c.env.DB.prepare("SELECT id, mdp_hash FROM joueurs WHERE pseudo = ?").bind(pseudo).first<{ id: string; mdp_hash: string }>();
+  const j = await c.env.DB.prepare("SELECT id, mdp_hash, suspendu, suspendu_motif FROM joueurs WHERE pseudo = ? AND supprime_le IS NULL")
+    .bind(pseudo)
+    .first<{ id: string; mdp_hash: string; suspendu: number; suspendu_motif: string | null }>();
   if (!j || !(await verifierMotDePasse(b.mdp, j.mdp_hash))) {
     await noterEchec(c, pseudo);
     return erreur(c, "Pseudo ou mot de passe incorrect.", 401);
   }
+  if (j.suspendu) return erreur(c, `Ce compte est suspendu${j.suspendu_motif ? ` : ${j.suspendu_motif.replace(/[.\s]+$/, "")}.` : "."} Contactez l'équipe Estacasino.`, 403);
   await ouvrirSession(c, j.id);
   return c.json({ ok: true });
 });
@@ -117,12 +156,13 @@ app.post("/auth/deconnexion", async (c) => {
 
 /** Mot de passe oublié : pseudo + code de secours → nouveau mot de passe et nouveau code de secours. */
 app.post("/auth/reinitialiser", async (c) => {
-  const b = await corps<{ pseudo: string; codeSecours: string; mdp: string }>(c);
+  const b = await corps<{ pseudo: string; codeSecours: string; mdp: string; turnstile: string }>(c);
+  if (!(await humainVerifie(c, b.turnstile))) return erreur(c, "Vérification anti-robot échouée, réessayez.", 403);
   const pseudo = (b.pseudo ?? "").trim();
   if (!pseudo || !b.codeSecours) return erreur(c, "Pseudo et code de secours requis.");
   if (typeof b.mdp !== "string" || b.mdp.length < MDP_MIN) return erreur(c, `Mot de passe : ${MDP_MIN} caractères minimum.`);
   if (await tropDEssais(c, pseudo)) return erreur(c, "Trop d'essais. Réessayez dans quelques minutes.", 429);
-  const j = await c.env.DB.prepare("SELECT id, secours_hash FROM joueurs WHERE pseudo = ?").bind(pseudo).first<{ id: string; secours_hash: string }>();
+  const j = await c.env.DB.prepare("SELECT id, secours_hash FROM joueurs WHERE pseudo = ? AND suspendu = 0 AND supprime_le IS NULL").bind(pseudo).first<{ id: string; secours_hash: string }>();
   if (!j || j.secours_hash !== (await sha256(normaliserCodeSecours(b.codeSecours)))) {
     await noterEchec(c, pseudo);
     return erreur(c, "Pseudo ou code de secours incorrect.", 401);
@@ -144,6 +184,32 @@ app.post("/moi/mdp", async (c) => {
   const j = await c.env.DB.prepare("SELECT mdp_hash FROM joueurs WHERE id = ?").bind(moi.id).first<{ mdp_hash: string }>();
   if (!j || !(await verifierMotDePasse(b.ancien ?? "", j.mdp_hash))) return erreur(c, "Mot de passe actuel incorrect.", 401);
   await c.env.DB.prepare("UPDATE joueurs SET mdp_hash = ? WHERE id = ?").bind(await hacherMotDePasse(b.mdp), moi.id).run();
+  return c.json({ ok: true });
+});
+
+/**
+ * Suppression de compte (RGPD) : pseudo, date de naissance, mot de passe, avatar, statistiques et historique
+ * de jeu sont effacés. Les achats sont conservés, rattachés à un compte anonyme (obligation comptable).
+ */
+app.post("/moi/supprimer", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  const b = await corps<{ mdp: string }>(c);
+  const j = await c.env.DB.prepare("SELECT mdp_hash FROM joueurs WHERE id = ?").bind(moi.id).first<{ mdp_hash: string }>();
+  if (!j || !(await verifierMotDePasse(b.mdp ?? "", j.mdp_hash))) return erreur(c, "Mot de passe incorrect.", 401);
+  const db = c.env.DB;
+  await db.batch([
+    db.prepare(
+      `UPDATE joueurs SET pseudo = ?, mdp_hash = '-', secours_hash = '-', date_naissance = '1900-01-01', solde = 0,
+       avatar = ?, theme = 'club', supprime_le = ? WHERE id = ?`,
+    ).bind(`supprime-${moi.id.slice(0, 8)}`, JSON.stringify(AVATARS_DEPART[0].config), Date.now(), moi.id),
+    db.prepare("DELETE FROM sessions WHERE joueur_id = ?").bind(moi.id),
+    db.prepare("DELETE FROM stats_saison WHERE joueur_id = ?").bind(moi.id),
+    db.prepare("DELETE FROM transactions_jetons WHERE joueur_id = ?").bind(moi.id),
+    db.prepare("DELETE FROM inventaire WHERE joueur_id = ?").bind(moi.id),
+    db.prepare("UPDATE rooms SET ouverte = 0 WHERE hote_id = ?").bind(moi.id),
+  ]);
+  await fermerSession(c);
   return c.json({ ok: true });
 });
 
@@ -189,6 +255,7 @@ app.get("/moi", async (c) => {
     pseudo: moi.pseudo,
     solde: moi.solde,
     avatar: lireAvatar(moi.avatar),
+    role: moi.role,
     theme: trouverTheme(moi.theme).id,
     inventaire: inventaire.results.map((x) => x.piece),
     saison: saison ? { nom: saison.nom, fin: saison.fin, gains: stats?.gains_nets ?? 0, parties: stats?.mains ?? 0, rang, minParties: CLASSEMENT_MIN_PARTIES } : null,
@@ -259,7 +326,7 @@ app.get("/classement", async (c) => {
   const lignes = await c.env.DB.prepare(
     `SELECT j.pseudo, j.avatar, s.${colGains} AS gains, s.${colParties} AS parties
      FROM stats_saison s JOIN joueurs j ON j.id = s.joueur_id
-     WHERE s.saison_id = ? AND s.${colParties} >= ?
+     WHERE s.saison_id = ? AND s.${colParties} >= ? AND j.suspendu = 0 AND j.supprime_le IS NULL
      ORDER BY gains DESC, parties ASC LIMIT 100`,
   )
     .bind(saison.id, CLASSEMENT_MIN_PARTIES)
@@ -415,6 +482,8 @@ app.post("/stripe/webhook", async (c) => {
   ]);
   return c.json({ recu: true });
 });
+
+app.route("/admin", admin);
 
 app.notFound((c) => erreur(c, "Introuvable.", 404));
 app.onError((e, c) => {

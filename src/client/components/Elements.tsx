@@ -61,6 +61,7 @@ export function Entete() {
               <Lien href="/classement">Classement</Lien>
               <Lien href="/boutique">Boutique</Lien>
               <Lien href="/profil">Profil</Lien>
+              {moi.role === "admin" && <Lien href="/admin">Admin</Lien>}
             </nav>
             <div className="soldes">
               <SoldeAnime valeur={moi.solde} />

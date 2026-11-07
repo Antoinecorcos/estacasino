@@ -97,6 +97,8 @@ export function TableRoulette({ chemin }: { chemin: string }) {
       const cle = `${resultat}@${etat?.historique.length}`;
       if (tirageAnime.current === cle) return;
       tirageAnime.current = cle;
+      // Sur téléphone, on ramène la roue à l'écran pour suivre la bille.
+      if (window.matchMedia("(max-width: 700px)").matches) hoteRoue.current?.scrollIntoView({ block: "center", behavior: "smooth" });
       if (moiJoueur && Object.keys(moiJoueur.mises).length) dernieresMises.current = { ...moiJoueur.mises };
       const reste = (etat?.echeance ?? Date.now()) - Date.now() - 150;
       const lancer = () =>
@@ -162,7 +164,7 @@ export function TableRoulette({ chemin }: { chemin: string }) {
     etat.phase === "mises" ? "Faites vos jeux" : etat.phase === "tirage" ? "Rien ne va plus" : etat.phase === "resultats" ? "Les jeux sont faits" : "En attente de joueurs";
 
   return (
-    <div className={`ecran-jeu${etat.phase === "tirage" ? " en-tirage" : ""}`}>
+    <div className={`ecran-jeu ecran-roulette${etat.phase === "tirage" ? " en-tirage" : ""}`}>
       <div className="conteneur">
         <BarreRoom
           titre={etat.nom}
@@ -258,7 +260,7 @@ export function TableRoulette({ chemin }: { chemin: string }) {
         </div>
         <div className="remarque" aria-live="polite">{etat.remarque ?? ""}</div>
 
-        <div className={etroit ? "" : "tapis-defile"}>
+        <div className={`zone-tapis${etroit ? "" : " tapis-defile"}`}>
           <div className={`tapis ${etroit ? "vertical" : "horizontal"}`} role="group" aria-label="Tapis de mises">
             {CASES.map((c) => {
               const [col, row] = etroit ? c.v : c.h;

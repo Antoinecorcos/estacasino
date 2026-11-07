@@ -22,6 +22,10 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
   private historique: number[] = [];
   private remarque: string | null = null;
 
+  protected nomJeu() {
+    return "roulette" as const;
+  }
+
   private get room(): string {
     return this.config?.solo ? "solo" : (this.config?.code ?? "grande-roue");
   }
@@ -63,6 +67,7 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
       const montant = Math.min(actuel, Math.trunc(msg.montant));
       if (!(montant > 0)) return;
       const solde = await crediter(this.env.DB, j.id, montant, "remboursement", "roulette", this.room);
+      await this.enJeu(j.id, -montant);
       if (solde !== null) j.solde = solde;
       if (actuel - montant > 0) j.mises[msg.cle] = actuel - montant;
       else delete j.mises[msg.cle];
@@ -74,6 +79,7 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
         const solde = await crediter(this.env.DB, j.id, total, "remboursement", "roulette", this.room);
         if (solde !== null) j.solde = solde;
       }
+      await this.solderEnJeu(j.id);
       j.mises = {};
       return;
     }
@@ -86,6 +92,7 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
     if (totalMises(j) + msg.montant > max) throw new ErreurJeu(`Maximum ${formatJetons(max)} jetons par tour.`);
     const solde = await debiter(this.env.DB, j.id, msg.montant, "roulette", this.room);
     if (solde === null) throw new ErreurJeu("Solde insuffisant pour cette mise.");
+    await this.enJeu(j.id, msg.montant);
     j.solde = solde;
     j.mises[msg.cle] = (j.mises[msg.cle] ?? 0) + msg.montant;
   }
@@ -128,6 +135,7 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
         if (solde !== null) j.solde = solde;
       }
       await enregistrerResultat(this.env.DB, j.id, "roulette", total, rendu);
+      await this.solderEnJeu(j.id);
       j.dernier = { mise: total, rendu };
       j.mises = {};
       if (rendu - total > 0 && (!meilleur || rendu - total > meilleur.gain)) meilleur = { pseudo: j.pseudo, gain: rendu - total };

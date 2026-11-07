@@ -423,3 +423,38 @@ kbd { font: inherit; font-size: 11px; font-weight: 800; padding: 1px 6px; border
   .page-jeu .panneau-jeu { gap: 10px; }
   .page-jeu .barre-jeu h1 { font-size: 20px !important; }
 }
+.zone-turnstile:empty { display: none; }
+.zone-turnstile { min-height: 65px; }
+
+/* ───── Administration ───── */
+.tuiles-admin { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.tuile-admin { padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.tuile-admin b { font-size: 22px; }
+.grille-admin { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .grille-admin { grid-template-columns: minmax(0, 1fr); } }
+.ligne-admin { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--ligne); align-items: baseline; }
+.liste-defilante { max-height: 280px; overflow-y: auto; padding-right: 6px; }
+.zone-danger { border-color: rgba(184, 67, 59, 0.5); }
+
+/* ───── Roulette sur téléphone : roue, puis tapis, commandes collées en bas ───── */
+@media (max-width: 700px) {
+  .page-jeu .ecran-roulette > .conteneur { display: flex; flex-direction: column; }
+  .page-jeu .ecran-roulette .roulette-haut { display: contents; }
+  .page-jeu .ecran-roulette .panneau-roue { order: 1; }
+  .page-jeu .ecran-roulette .remarque { order: 2; }
+  .page-jeu .ecran-roulette .zone-tapis { order: 3; margin-top: 8px; }
+  .page-jeu .ecran-roulette .panneau-mises {
+    order: 4; position: sticky; bottom: 0; z-index: 5; margin: 10px -12px 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    gap: 8px; border-radius: 16px 16px 0 0; box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.6); background: var(--ardoise);
+  }
+  .page-jeu .ecran-roulette .panneau-mises h2, .page-jeu .ecran-roulette .panneau-mises .surtitre, .page-jeu .ecran-roulette .panneau-mises .joueurs-roulette { display: none; }
+  .page-jeu .ecran-roulette .panneau-mises .stat b { font-size: 16px; }
+  .page-jeu .ecran-roulette .panneau-mises .jeton { width: 40px; height: 40px; border-width: 4px; font-size: 10px; }
+  .page-jeu .ecran-roulette .panneau-mises .btn-geant { min-height: 48px; font-size: 15px; }
+  .page-jeu .ecran-roulette .cadre-roue { max-width: 300px; }
+  .page-jeu .ecran-roulette > .conteneur > p { order: 5; }
+}
+@media (max-width: 700px) {
+  .page-jeu .ecran-roulette .panneau-mises .stat { flex-direction: row; align-items: baseline; gap: 6px; }
+  .page-jeu .ecran-roulette .panneau-mises .stat .surtitre { display: inline; font-size: 10px; letter-spacing: 0.12em; }
+}

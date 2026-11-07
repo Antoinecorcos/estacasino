@@ -32,6 +32,10 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
   private echeance: number | null = null;
   private remarque: string | null = null;
 
+  protected nomJeu() {
+    return "blackjack" as const;
+  }
+
   private get room(): string | null {
     return this.config?.solo ? "solo" : (this.config?.code ?? null);
   }
@@ -95,6 +99,7 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
     if (montant > 0) {
       const solde = await debiter(this.env.DB, j.id, montant, "blackjack", this.room);
       if (solde === null) throw new ErreurJeu("Solde insuffisant pour cette mise.");
+      await this.enJeu(j.id, montant);
       j.solde = solde;
       j.mise = montant;
     }
@@ -125,6 +130,7 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
   private async rembourserMise(j: BjJoueur): Promise<void> {
     if (j.mise <= 0) return;
     const solde = await crediter(this.env.DB, j.id, j.mise, "remboursement", "blackjack", this.room);
+    await this.enJeu(j.id, -j.mise);
     if (solde !== null) j.solde = solde;
     j.mise = 0;
   }
@@ -219,6 +225,7 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
         if (!peutDoubler(main.cartes)) throw new ErreurJeu("On ne double que sur les deux premières cartes.");
         const solde = await debiter(this.env.DB, j.id, main.mise, "blackjack", this.room);
         if (solde === null) throw new ErreurJeu("Solde insuffisant pour doubler.");
+        await this.enJeu(j.id, main.mise);
         j.solde = solde;
         main.mise *= 2;
         main.doublee = true;
@@ -231,6 +238,7 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
           throw new ErreurJeu("Séparation possible une seule fois, avec deux cartes de même valeur.");
         const solde = await debiter(this.env.DB, j.id, main.mise, "blackjack", this.room);
         if (solde === null) throw new ErreurJeu("Solde insuffisant pour séparer.");
+        await this.enJeu(j.id, main.mise);
         j.solde = solde;
         const [a, b] = main.cartes;
         const asSepares = a.r === "A";
@@ -294,6 +302,7 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
         if (rendu > m.mise) gagnants++;
         if (rendu === 0) perdants++;
       }
+      await this.solderEnJeu(j.id);
     }
     if (!this.remarque || this.phase === "jeu" || this.phase === "croupier") {
       const vc = valeurMain(this.croupier).total;

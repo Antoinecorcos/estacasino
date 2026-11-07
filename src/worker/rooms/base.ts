@@ -1,7 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 import type { ConfigAvatar } from "../../shared/avatar";
 import type { MessageServeur } from "../../shared/protocole";
-import { ROOM_VIDE_FERMETURE_MS } from "../../shared/regles";
+import { type Jeu, ROOM_VIDE_FERMETURE_MS } from "../../shared/regles";
+import { crediter, lireSolde } from "../economie";
 import type { Env } from "../env";
 
 // Base commune des rooms (blackjack et roulette). Chaque room est un Durable Object unique :
@@ -41,6 +42,42 @@ export abstract class RoomBase<Etat, MessageClient> extends DurableObject<Env> {
   private minuteur: ReturnType<typeof setTimeout> | null = null;
   private generation = 0;
 
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    // Si la room a redémarré (mise à jour, panne), les mises débitées mais jamais réglées sont remboursées.
+    void ctx.blockConcurrencyWhile(() => this.rembourserOrphelines());
+  }
+
+  protected abstract nomJeu(): Jeu;
+
+  /**
+   * Mises « en jeu » : débitées du solde mais pas encore réglées. Elles sont notées dans le stockage
+   * durable de la room, qui survit à un redémarrage (contrairement à l'état en mémoire).
+   */
+  protected async enJeu(joueurId: string, delta: number): Promise<void> {
+    const cle = `en-jeu:${joueurId}`;
+    const montant = ((await this.ctx.storage.get<number>(cle)) ?? 0) + delta;
+    if (montant > 0) await this.ctx.storage.put(cle, montant);
+    else await this.ctx.storage.delete(cle);
+  }
+
+  /** La main ou le tour du joueur est réglé : plus rien n'est en jeu pour lui. */
+  protected async solderEnJeu(joueurId: string): Promise<void> {
+    await this.ctx.storage.delete(`en-jeu:${joueurId}`);
+  }
+
+  private async rembourserOrphelines(): Promise<void> {
+    const orphelines = await this.ctx.storage.list<number>({ prefix: "en-jeu:" });
+    for (const [cle, montant] of orphelines) {
+      const joueurId = cle.slice("en-jeu:".length);
+      if (montant > 0) {
+        await crediter(this.env.DB, joueurId, montant, "remboursement", this.nomJeu(), "reprise");
+        console.warn(`Room redémarrée : ${montant} jetons remboursés à ${joueurId}`);
+      }
+      await this.ctx.storage.delete(cle);
+    }
+  }
+
   /** Le joueur arrive (ou revient). Retourne false s'il n'y a plus de place : il devient spectateur. */
   protected abstract rejoindre(ident: Identite): Promise<void> | void;
   /** Le joueur n'a plus aucune connexion ouverte. */
@@ -55,6 +92,8 @@ export abstract class RoomBase<Etat, MessageClient> extends DurableObject<Env> {
     const ident = JSON.parse(decodeURIComponent(req.headers.get(ENTETE_IDENTITE) ?? "")) as Identite;
     const config = JSON.parse(decodeURIComponent(req.headers.get(ENTETE_CONFIG) ?? "")) as ConfigRoom;
     if (!this.config) this.config = config;
+    // Solde relu ici : un remboursement a pu avoir lieu au démarrage de la room.
+    ident.solde = (await lireSolde(this.env.DB, ident.id)) ?? ident.solde;
 
     const paire = new WebSocketPair();
     const [client, serveur] = [paire[0], paire[1]];
@@ -64,7 +103,19 @@ export abstract class RoomBase<Etat, MessageClient> extends DurableObject<Env> {
     this.sockets.set(serveur, ident.id);
     await this.ctx.storage.deleteAlarm();
 
+    // Au plus 12 messages par seconde et par connexion : au-delà, on ignore (clics frénétiques, robots).
+    let fenetre = 0;
+    let compte = 0;
     serveur.addEventListener("message", (ev) => {
+      const maintenant = Date.now();
+      if (maintenant - fenetre > 1000) {
+        fenetre = maintenant;
+        compte = 0;
+      }
+      if (++compte > 12) {
+        if (compte === 13) this.erreur(serveur, "Doucement ! Trop d'actions d'un coup.");
+        return;
+      }
       let msg: MessageClient;
       try {
         msg = JSON.parse(typeof ev.data === "string" ? ev.data : "") as MessageClient;

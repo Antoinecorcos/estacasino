@@ -173,7 +173,56 @@ export function Profil() {
             )}
           </div>
         </div>
+        <SuppressionCompte />
       </div>
     </Page>
+  );
+}
+
+/** Suppression du compte (RGPD), confirmée par le mot de passe. */
+function SuppressionCompte() {
+  const { rafraichir, notifier } = useSession();
+  const [ouvert, setOuvert] = useState(false);
+  const [mdp, setMdp] = useState("");
+  const [compris, setCompris] = useState(false);
+  const supprimer = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      await api("/moi/supprimer", { corps: { mdp } });
+      await rafraichir();
+      naviguer("/", true);
+      notifier("Votre compte a été supprimé. Merci d'être passé·e au salon.");
+    } catch (err) {
+      notifier((err as Error).message, true);
+    }
+  };
+  return (
+    <section className="carte-ui encart zone-danger">
+      <h2 style={{ fontSize: 24 }}>Supprimer mon compte</h2>
+      <p className="muet" style={{ fontSize: 14 }}>
+        Votre pseudo, votre date de naissance, vos jetons, votre classement, votre historique de jeu et vos cosmétiques sont effacés
+        définitivement. Les achats déjà payés sont conservés de façon anonyme, comme la loi l'impose pour la comptabilité.
+      </p>
+      {!ouvert ? (
+        <button type="button" className="btn" style={{ alignSelf: "flex-start" }} onClick={() => setOuvert(true)}>Supprimer mon compte…</button>
+      ) : (
+        <form className="pile" style={{ gap: 12 }} onSubmit={supprimer}>
+          <div className="champ">
+            <label htmlFor="sup-mdp">Votre mot de passe, pour confirmer</label>
+            <input id="sup-mdp" type="password" className="input" value={mdp} onChange={(e) => setMdp(e.target.value)} autoComplete="current-password" required />
+          </div>
+          <label className="case">
+            <input type="checkbox" checked={compris} onChange={(e) => setCompris(e.target.checked)} />
+            Je comprends que cette suppression est définitive.
+          </label>
+          <div className="rangee" style={{ gap: 8 }}>
+            <button type="submit" className="btn" style={{ borderColor: "var(--carmin)", color: "var(--carmin-clair)" }} disabled={!compris || !mdp}>
+              Supprimer définitivement
+            </button>
+            <button type="button" className="btn" onClick={() => setOuvert(false)}>Annuler</button>
+          </div>
+        </form>
+      )}
+    </section>
   );
 }

@@ -68,6 +68,8 @@ Chaque push sur la branche de production redéploie le site et applique les nouv
 | `APP_URL` | Variable | Dans `wrangler.jsonc` (`vars`) : l'URL publique : `https://estacasino.com` |
 | `STRIPE_SECRET_KEY` | **Secret** | Worker → Settings → Variables and Secrets → Add → type *Secret* |
 | `STRIPE_WEBHOOK_SECRET` | **Secret** | Idem |
+| `TURNSTILE_SITE_KEY` | Variable | Optionnel : clé publique Turnstile (anti-robots), dans `wrangler.jsonc` (`vars`) |
+| `TURNSTILE_SECRET` | **Secret** | Optionnel : clé secrète Turnstile. Sans ces deux clés, pas de vérification anti-robot |
 
 Les bindings `DB`, `ROOMS_BLACKJACK` et `ROOMS_ROULETTE` sont créés automatiquement à partir de `wrangler.jsonc`. Tant que `STRIPE_SECRET_KEY` n'est pas défini, la boutique s'affiche avec « Bientôt disponible ».
 
@@ -86,6 +88,18 @@ Worker → Settings → Domains & Routes → Add → Custom domain. Pensez à me
 
 ## Opérations courantes
 
+### Nommer un administrateur
+
+```bash
+npx wrangler d1 execute estacasino --remote --command "UPDATE joueurs SET role = 'admin' WHERE pseudo = '<pseudo>'"
+```
+
+L'onglet « Admin » apparaît alors dans l'en-tête (page `/admin`) : chercher un joueur, voir ses jetons et ses achats, lui donner un mot de passe provisoire, suspendre ou réactiver son compte. Chaque action est enregistrée dans un journal.
+
+### Protection anti-robots (Turnstile)
+
+Tableau de bord Cloudflare → *Turnstile* → *Add widget* (domaine `estacasino.com`, mode « Managed »). Mettez la clé publique dans `TURNSTILE_SITE_KEY` (`wrangler.jsonc`) et la clé secrète dans le secret `TURNSTILE_SECRET`. La vérification s'active alors sur l'inscription et la réinitialisation du mot de passe.
+
 ### Mot de passe oublié
 
 Le joueur utilise d'abord son **code de secours** (donné à l'inscription) sur la page « Mot de passe oublié ». S'il l'a perdu aussi :
@@ -94,7 +108,7 @@ Le joueur utilise d'abord son **code de secours** (donné à l'inscription) sur 
 npm run reset-password -- <pseudo>
 ```
 
-Le script écrit un mot de passe provisoire dans la base en ligne et l'affiche ; transmettez-le au joueur. Ajoutez `--local` pour la base de développement.
+Le script écrit un mot de passe provisoire dans la base en ligne et l'affiche ; transmettez-le au joueur. Ajoutez `--local` pour la base de développement. Plus simple : le bouton « Mot de passe provisoire » de l'espace admin.
 
 ### Ouvrir une nouvelle saison
 
