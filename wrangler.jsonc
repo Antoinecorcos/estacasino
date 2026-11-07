@@ -13,8 +13,9 @@
     "run_worker_first": ["/api/*"]
   },
   "vars": {
-    // URL publique du site, sans « / » final. À remplacer par le nom de domaine.
-    "APP_URL": "http://localhost:8787"
+    // URL publique du site, sans « / » final (retours de paiement Stripe).
+    // En local, elle est remplacée par celle du fichier .dev.vars (APP_URL=http://localhost:8787).
+    "APP_URL": "https://estacasino.com"
   },
   "d1_databases": [
     {

@@ -14,11 +14,11 @@ Objectif : une adresse qui fonctionne, testée de bout en bout, encore réservé
 |---|---|
 | 🙋 | Vérifier que le build Cloudflare passe et me donner l'adresse du site (`….workers.dev` ou domaine) |
 | 🙋 | Régler la branche de production dans Cloudflare. Recommandé : créer une branche `main` pour la production, et garder les autres branches en préversions |
-| 🤖 | Mettre `APP_URL` à la bonne adresse dans `wrangler.jsonc` |
+| ✅ | `APP_URL` = `https://estacasino.com` dans `wrangler.jsonc` |
 | 🙋 | Stripe en **mode test** : clé secrète `sk_test_…`, webhook vers `/api/stripe/webhook`, Stripe Tax activé |
 | 🙋🤖 | Faire ensemble un achat test complet (carte de test Stripe) et vérifier la TVA sur le reçu |
 | 🙋 | Retirer le code de secours de `brouillon.md` et en générer un nouveau depuis le profil |
-| 🙋 | Acheter le nom de domaine et le brancher sur le Worker |
+| 🙋 | Brancher `estacasino.com` (et `www.estacasino.com`) sur le Worker : *Settings → Domains & Routes → Custom domain* |
 
 ## Étape 2 : solidité avant les premiers joueurs (bêta privée)
 

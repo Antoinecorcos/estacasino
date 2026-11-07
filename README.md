@@ -25,6 +25,7 @@ Le site tourne sur http://localhost:8787 avec une base D1 et des Durable Objects
 Pour tester les achats en local, créez un fichier `.dev.vars` (ignoré par git) :
 
 ```
+APP_URL=http://localhost:8787
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
@@ -64,7 +65,7 @@ Chaque push sur la branche de production redéploie le site et applique les nouv
 
 | Nom | Type | Où le définir |
 |---|---|---|
-| `APP_URL` | Variable | Dans `wrangler.jsonc` (`vars`) : l'URL publique, ex. `https://estacasino.fr`, sans « / » final |
+| `APP_URL` | Variable | Dans `wrangler.jsonc` (`vars`) : l'URL publique : `https://estacasino.com` |
 | `STRIPE_SECRET_KEY` | **Secret** | Worker → Settings → Variables and Secrets → Add → type *Secret* |
 | `STRIPE_WEBHOOK_SECRET` | **Secret** | Idem |
 
@@ -74,7 +75,7 @@ Les bindings `DB`, `ROOMS_BLACKJACK` et `ROOMS_ROULETTE` sont créés automatiqu
 
 1. **Stripe Tax** : Settings → Tax → activez-le et ajoutez votre immatriculation (France). Les prix sont envoyés en *TVA incluse* (`tax_behavior: inclusive`) : le prix affiché est le prix payé.
 2. **Webhook** : Developers → Webhooks → Add endpoint
-   - URL : `https://<votre-domaine>/api/stripe/webhook`
+   - URL : `https://estacasino.com/api/stripe/webhook`
    - Événements : `checkout.session.completed` et `checkout.session.async_payment_succeeded`
    - Copiez le *Signing secret* (`whsec_…`) dans le secret `STRIPE_WEBHOOK_SECRET`.
 3. Les produits n'ont pas besoin d'être créés dans Stripe : le catalogue est dans `src/shared/boutique.ts` et chaque paiement est créé avec son prix.
