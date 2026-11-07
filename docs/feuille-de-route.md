@@ -35,7 +35,7 @@ Objectif : pouvoir ouvrir à 10-30 amis sans risque de perdre des jetons, d'êtr
 | ✅ | Vérifications automatiques à chaque push (GitHub Actions : types, tests, compilation) |
 | 🙋 | Mesure d'audience sans cookie : tableau de bord Cloudflare → *Web Analytics* → *Add a site* → `estacasino.com` (activation automatique) |
 | ✅ | Mode mobile de la roulette (roue, tapis, commandes collées en bas) |
-| 🙋 | Me nommer… ou plutôt vous nommer administrateur (commande dans le `README.md`) |
+| 🙋 | Vous nommer administrateur (commande dans le `README.md`) |
 
 ## Étape 3 : conformité (en parallèle de l'étape 2)
 
