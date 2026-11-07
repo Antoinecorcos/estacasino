@@ -21,7 +21,7 @@
       "binding": "DB",
       "database_name": "estacasino",
       // Remplacer par l'identifiant donné par `wrangler d1 create estacasino`.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "5d3f5fa4-acd5-49e0-a468-a79c7fd7d4d9",
       "migrations_dir": "migrations"
     }
   ],
