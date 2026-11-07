@@ -1,7 +1,9 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { type Categorie, CATEGORIES, type ConfigAvatar, cleePiece, PIECES } from "../../shared/avatar";
 import { MDP_MIN } from "../../shared/regles";
+import { THEMES } from "../../shared/themes";
 import { api } from "../api";
+import { ApercuTheme } from "../components/ApercuTheme";
 import { Avatar } from "../components/Avatar";
 import { Page } from "../components/Elements";
 import { Lien, naviguer } from "../router";
@@ -27,6 +29,15 @@ export function Profil() {
       await api("/moi/avatar", { methode: "PUT", corps: { avatar: config } });
       await rafraichir();
       notifier("Avatar enregistré. Très réussi.");
+    } catch (e) {
+      notifier((e as Error).message, true);
+    }
+  };
+
+  const choisirTheme = async (theme: string) => {
+    try {
+      await api("/moi/theme", { methode: "PUT", corps: { theme } });
+      await rafraichir();
     } catch (e) {
       notifier((e as Error).message, true);
     }
@@ -105,6 +116,31 @@ export function Profil() {
               <p className="muet" style={{ fontSize: 13 }}>
                 Les pièces verrouillées se trouvent dans la <Lien href="/boutique">boutique</Lien>.
               </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="carte-ui" style={{ padding: 24 }}>
+          <div className="pile" style={{ gap: 14 }}>
+            <div className="pile" style={{ gap: 4 }}>
+              <h2 style={{ fontSize: 26 }}>Thème de table</h2>
+              <p className="muet" style={{ fontSize: 14 }}>
+                Le feutre, le bois, le dos des cartes et la couleur d'accent. Dans les rooms que vous ouvrez, tous les joueurs voient votre thème.
+              </p>
+            </div>
+            <div className="choix-themes">
+              {THEMES.map((t) => {
+                const dispo = t.gratuit || moi.inventaire.includes(`theme:${t.id}`);
+                return (
+                  <button key={t.id} type="button" className="choix-theme" aria-pressed={moi.theme === t.id} disabled={!dispo} onClick={() => void choisirTheme(t.id)}>
+                    <ApercuTheme theme={t} />
+                    <span>
+                      {t.nom}
+                      {!dispo && <span className="muet" style={{ fontSize: 12 }}> · boutique</span>}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </section>

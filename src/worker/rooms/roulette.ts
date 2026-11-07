@@ -5,11 +5,13 @@ import { aleatoire } from "../crypto";
 import { crediter, debiter, enregistrerResultat } from "../economie";
 import { auHasard, ErreurJeu, type Identite, RoomBase } from "./base";
 
-// Cycle de 30 secondes : 20 s de mises, 6 s de tirage (animation), 4 s de résultats.
+// Room et Grande Roue : cycle de 30 secondes (18 s de mises, 8 s de tirage animé, 4 s de résultats).
 // La roue ne tourne que s'il y a quelqu'un dans la room.
-const DUREE_MISES_MS = 20_000;
-const DUREE_TIRAGE_MS = 6_000;
+// Table solo : pas de minuteur, le joueur lance la bille quand il veut.
+const DUREE_MISES_MS = 18_000;
+const DUREE_TIRAGE_MS = 8_000;
 const DUREE_RESULTATS_MS = 4_000;
+const DUREE_RESULTATS_SOLO_MS = 2_500;
 const HISTORIQUE = 14;
 
 export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
@@ -21,7 +23,7 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
   private remarque: string | null = null;
 
   private get room(): string {
-    return this.config?.code ?? "grande-roue";
+    return this.config?.solo ? "solo" : (this.config?.code ?? "grande-roue");
   }
 
   protected rejoindre(ident: Identite): void {
@@ -51,6 +53,21 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
     const j = this.joueurs.get(id);
     if (!j) throw new ErreurJeu("La table est complète : vous regardez la partie.");
     if (this.phase !== "mises") throw new ErreurJeu("Les jeux sont faits, attendez le prochain tour.");
+    if (msg.t === "lancer") {
+      if (!this.config?.solo) throw new ErreurJeu("La roue tourne toute seule à cette table.");
+      if (totalMises(j) === 0) throw new ErreurJeu("Placez au moins une mise.");
+      return this.lancer();
+    }
+    if (msg.t === "retirer") {
+      const actuel = j.mises[msg.cle] ?? 0;
+      const montant = Math.min(actuel, Math.trunc(msg.montant));
+      if (!(montant > 0)) return;
+      const solde = await crediter(this.env.DB, j.id, montant, "remboursement", "roulette", this.room);
+      if (solde !== null) j.solde = solde;
+      if (actuel - montant > 0) j.mises[msg.cle] = actuel - montant;
+      else delete j.mises[msg.cle];
+      return;
+    }
     if (msg.t === "annuler") {
       const total = totalMises(j);
       if (total > 0) {
@@ -76,12 +93,18 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
   private ouvrirMises(): void {
     this.phase = "mises";
     this.resultat = null;
+    if (this.config?.solo) {
+      this.echeance = null;
+      this.remarque = null;
+      return;
+    }
     this.echeance = Date.now() + DUREE_MISES_MS;
     this.remarque = auHasard([null, null, "Faites vos jeux.", "Le croupier lustre la bille. Prenez votre temps."]);
     this.planifier(DUREE_MISES_MS, () => this.lancer());
   }
 
   private lancer(): void {
+    this.annulerMinuteur();
     this.phase = "tirage";
     this.resultat = aleatoire(37);
     this.echeance = Date.now() + DUREE_TIRAGE_MS;
@@ -118,8 +141,9 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
     else this.remarque = null;
 
     this.phase = "resultats";
-    this.echeance = Date.now() + DUREE_RESULTATS_MS;
-    this.planifier(DUREE_RESULTATS_MS, () => {
+    const pause = this.config?.solo ? DUREE_RESULTATS_SOLO_MS : DUREE_RESULTATS_MS;
+    this.echeance = Date.now() + pause;
+    this.planifier(pause, () => {
       if (this.nbConnexions() > 0) this.ouvrirMises();
       else {
         this.phase = "attente";
@@ -133,8 +157,10 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
     return {
       jeu: "roulette",
       code: this.config?.code ?? null,
+      solo: this.config?.solo ?? false,
       nom: this.config?.nom ?? "Roulette",
       hoteId: this.config?.hoteId ?? null,
+      theme: this.config?.theme ?? null,
       phase: this.phase,
       limites: { min: this.config?.min ?? 0, max: this.config?.max ?? 0 },
       joueurs: assis,

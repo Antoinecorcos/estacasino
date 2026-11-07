@@ -9,7 +9,7 @@ export const FILET_SEUIL = 500;
 export const FILET_MONTANT = 2_000;
 export const FILET_DELAI_MS = 4 * 60 * 60 * 1000;
 /** Nombre minimum de mains/tours joués dans la saison pour apparaître au classement. */
-export const CLASSEMENT_MIN_PARTIES = 20;
+export const CLASSEMENT_MIN_PARTIES = 5;
 
 export const ROOM_VIDE_FERMETURE_MS = 15 * 60 * 1000;
 export const BLACKJACK_PLACES = 5;

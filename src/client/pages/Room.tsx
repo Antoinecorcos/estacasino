@@ -46,6 +46,10 @@ export function PageBlackjackSolo() {
   return <TableBlackjack chemin="/jeu/blackjack/solo/ws" />;
 }
 
+export function PageRouletteSolo() {
+  return <TableRoulette chemin="/jeu/roulette/solo/ws" />;
+}
+
 export function PageGrandeRoue() {
   return <TableRoulette chemin="/jeu/roulette/grande-roue/ws" />;
 }

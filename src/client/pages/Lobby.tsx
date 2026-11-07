@@ -28,8 +28,8 @@ function MiniRoue() {
         const p = (a: number, r: number) => `${56 + r * Math.sin(a)} ${56 - r * Math.cos(a)}`;
         return <path key={i} d={`M56 56 L${p(a1, 48)} A48 48 0 0 1 ${p(a2, 48)} Z`} fill={i === 0 ? "#1f7a52" : i % 2 ? "#b8433b" : "#141618"} />;
       })}
-      <circle cx="56" cy="56" r="26" fill="#0b0d0e" stroke="#c9a45c" strokeWidth="2" />
-      <circle cx="56" cy="56" r="7" fill="#c9a45c" />
+      <circle cx="56" cy="56" r="26" fill="#0b0d0e" style={{ stroke: "var(--accent)" }} strokeWidth="2" />
+      <circle cx="56" cy="56" r="7" style={{ fill: "var(--accent)" }} />
     </svg>
   );
 }
@@ -139,9 +139,12 @@ export function Lobby() {
               <article className="carte-ui carte-jeu">
                 <div className="visuel"><MiniRoue /></div>
                 <div className="corps">
-                  <h3 style={{ fontSize: 26 }}>La Grande Roue</h3>
-                  <p className="muet" style={{ fontSize: 14, flex: 1 }}>La roulette publique : un tirage toutes les 30 secondes, ouverte à tous.</p>
-                  <button type="button" className="btn btn-principal" onClick={() => naviguer("/roulette")}>Prendre place</button>
+                  <h3 style={{ fontSize: 26 }}>Roulette</h3>
+                  <p className="muet" style={{ fontSize: 14, flex: 1 }}>Seul, vous lancez la bille. À La Grande Roue, tout le monde mise ensemble, un tirage toutes les 30 secondes.</p>
+                  <div className="rangee" style={{ gap: 8 }}>
+                    <button type="button" className="btn btn-principal" style={{ flex: 1 }} onClick={() => naviguer("/roulette/solo")}>Jouer seul</button>
+                    <button type="button" className="btn btn-contour" style={{ flex: 1 }} onClick={() => naviguer("/roulette")}>La Grande Roue</button>
+                  </div>
                 </div>
               </article>
               <article className="carte-ui carte-jeu bientot" aria-label="Poker Hold'em, bientôt disponible">
@@ -240,7 +243,9 @@ export function Lobby() {
             )}
             {moi.saison && (
               <p className="muet" style={{ fontSize: 13 }}>
-                Saison « {moi.saison.nom} » · fin dans {finSaison} jour{finSaison === 1 ? "" : "s"}.
+                {finSaison !== null && finSaison <= 120
+                  ? `${moi.saison.nom} · fin dans ${finSaison} jour${finSaison === 1 ? "" : "s"}.`
+                  : `${moi.saison.nom} · la saison de lancement. Classé dès ${moi.saison.minParties} parties.`}
               </p>
             )}
           </aside>

@@ -25,6 +25,7 @@ import { chaineAleatoire, hacherMotDePasse, sha256, verifierMotDePasse } from ".
 import { crediter, jourParis, saisonCourante, veille } from "./economie";
 import type { Env } from "./env";
 import { type ConfigRoom, ENTETE_CONFIG, ENTETE_IDENTITE, type Identite } from "./rooms/base";
+import { themeAccessible, trouverTheme } from "../shared/themes";
 import { creerSessionCheckout, type SessionCheckoutTerminee, verifierSignatureWebhook } from "./stripe";
 
 export { BlackjackRoom } from "./rooms/blackjack";
@@ -163,9 +164,9 @@ function montantBonus(serie: number): number {
 app.get("/moi", async (c) => {
   const moi = await exigerJoueur(c);
   if (moi instanceof Response) return moi;
-  const j = await c.env.DB.prepare("SELECT bonus_dernier, bonus_serie, filet_dernier FROM joueurs WHERE id = ?")
+  const j = await c.env.DB.prepare("SELECT bonus_dernier, bonus_serie, filet_dernier, theme FROM joueurs WHERE id = ?")
     .bind(moi.id)
-    .first<{ bonus_dernier: string | null; bonus_serie: number; filet_dernier: number | null }>();
+    .first<{ bonus_dernier: string | null; bonus_serie: number; filet_dernier: number | null; theme: string }>();
   const saison = await saisonCourante(c.env.DB);
   const stats = saison
     ? await c.env.DB.prepare("SELECT gains_nets, mains FROM stats_saison WHERE joueur_id = ? AND saison_id = ?").bind(moi.id, saison.id).first<{ gains_nets: number; mains: number }>()
@@ -188,6 +189,7 @@ app.get("/moi", async (c) => {
     pseudo: moi.pseudo,
     solde: moi.solde,
     avatar: lireAvatar(moi.avatar),
+    theme: trouverTheme(moi.theme).id,
     inventaire: inventaire.results.map((x) => x.piece),
     saison: saison ? { nom: saison.nom, fin: saison.fin, gains: stats?.gains_nets ?? 0, parties: stats?.mains ?? 0, rang, minParties: CLASSEMENT_MIN_PARTIES } : null,
     bonus: { disponible: bonusDispo, montant: montantBonus(serieSuivante), serie: bonusDispo ? serieSuivante : (j?.bonus_serie ?? 1) },
@@ -235,6 +237,17 @@ app.put("/moi/avatar", async (c) => {
   return c.json({ ok: true, avatar });
 });
 
+app.put("/moi/theme", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  const b = await corps<{ theme: string }>(c);
+  const inv = await c.env.DB.prepare("SELECT piece FROM inventaire WHERE joueur_id = ?").bind(moi.id).all<{ piece: string }>();
+  const possede = new Set(inv.results.map((x) => x.piece));
+  if (!themeAccessible(b.theme ?? "", (cle) => possede.has(cle))) return erreur(c, "Ce thème ne fait pas partie de votre collection.");
+  await c.env.DB.prepare("UPDATE joueurs SET theme = ? WHERE id = ?").bind(b.theme, moi.id).run();
+  return c.json({ ok: true, theme: b.theme });
+});
+
 // ───────────── Classement ─────────────
 
 app.get("/classement", async (c) => {
@@ -273,11 +286,11 @@ app.post("/rooms", async (c) => {
   for (let essai = 0; essai < 8; essai++) {
     const code = chaineAleatoire(ALPHABET_CODE, 5);
     const r = await c.env.DB.prepare(
-      `INSERT INTO rooms (code, jeu, hote_id, mise_min, mise_max, ouverte, cree_le) VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6)
-       ON CONFLICT (code) DO UPDATE SET jeu = ?2, hote_id = ?3, mise_min = ?4, mise_max = ?5, ouverte = 1, cree_le = ?6
+      `INSERT INTO rooms (code, jeu, hote_id, mise_min, mise_max, ouverte, cree_le, theme) VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6, ?8)
+       ON CONFLICT (code) DO UPDATE SET jeu = ?2, hote_id = ?3, mise_min = ?4, mise_max = ?5, ouverte = 1, cree_le = ?6, theme = ?8
        WHERE rooms.ouverte = 0 AND rooms.cree_le < ?7`,
     )
-      .bind(code, b.jeu, moi.id, min, max, Date.now(), Date.now() - 24 * 60 * 60 * 1000)
+      .bind(code, b.jeu, moi.id, min, max, Date.now(), Date.now() - 24 * 60 * 60 * 1000, trouverTheme(moi.theme).id)
       .run();
     if (r.meta.changes === 1) return c.json({ code, jeu: b.jeu });
   }
@@ -286,10 +299,10 @@ app.post("/rooms", async (c) => {
 
 async function lireRoom(c: C, code: string) {
   return c.env.DB.prepare(
-    "SELECT r.code, r.jeu, r.mise_min, r.mise_max, r.ouverte, r.hote_id, j.pseudo AS hote FROM rooms r JOIN joueurs j ON j.id = r.hote_id WHERE r.code = ?",
+    "SELECT r.code, r.jeu, r.mise_min, r.mise_max, r.ouverte, r.hote_id, r.theme, j.pseudo AS hote FROM rooms r JOIN joueurs j ON j.id = r.hote_id WHERE r.code = ?",
   )
     .bind(code)
-    .first<{ code: string; jeu: Jeu; mise_min: number; mise_max: number; ouverte: number; hote_id: string; hote: string }>();
+    .first<{ code: string; jeu: Jeu; mise_min: number; mise_max: number; ouverte: number; hote_id: string; theme: string; hote: string }>();
 }
 
 app.get("/rooms/:code", async (c) => {
@@ -297,7 +310,7 @@ app.get("/rooms/:code", async (c) => {
   if (!CODE_REGEX.test(code)) return erreur(c, "Code invalide : 5 lettres.", 404);
   const r = await lireRoom(c, code);
   if (!r || !r.ouverte) return erreur(c, "Aucune room ouverte avec ce code.", 404);
-  return c.json({ code: r.code, jeu: r.jeu, min: r.mise_min, max: r.mise_max, hote: r.hote });
+  return c.json({ code: r.code, jeu: r.jeu, min: r.mise_min, max: r.mise_max, hote: r.hote, theme: trouverTheme(r.theme).id });
 });
 
 /** Relaie une connexion WebSocket vers le Durable Object de la room, avec l'identité vérifiée du joueur. */
@@ -317,12 +330,20 @@ app.get("/jeu/blackjack/solo/ws", async (c) => {
   const moi = await joueurConnecte(c);
   if (!moi) return erreur(c, "Connectez-vous pour jouer.", 401);
   return versRoom(c, c.env.ROOMS_BLACKJACK, `solo:${moi.id}`, {
-    code: null, solo: true, hoteId: moi.id, nom: "Table privée", ...BLACKJACK_LIMITES_DEFAUT,
+    code: null, solo: true, hoteId: moi.id, nom: "Table privée", theme: null, ...BLACKJACK_LIMITES_DEFAUT,
+  });
+});
+
+app.get("/jeu/roulette/solo/ws", async (c) => {
+  const moi = await joueurConnecte(c);
+  if (!moi) return erreur(c, "Connectez-vous pour jouer.", 401);
+  return versRoom(c, c.env.ROOMS_ROULETTE, `solo:${moi.id}`, {
+    code: null, solo: true, hoteId: moi.id, nom: "Roulette · table privée", theme: null, ...ROULETTE_LIMITES_DEFAUT,
   });
 });
 
 app.get("/jeu/roulette/grande-roue/ws", (c) =>
-  versRoom(c, c.env.ROOMS_ROULETTE, "grande-roue", { code: null, solo: false, hoteId: null, nom: "La Grande Roue", ...ROULETTE_LIMITES_DEFAUT }),
+  versRoom(c, c.env.ROOMS_ROULETTE, "grande-roue", { code: null, solo: false, hoteId: null, nom: "La Grande Roue", theme: null, ...ROULETTE_LIMITES_DEFAUT }),
 );
 
 app.get("/rooms/:code/ws", async (c) => {
@@ -331,7 +352,7 @@ app.get("/rooms/:code/ws", async (c) => {
   if (!r || !r.ouverte) return erreur(c, "Aucune room ouverte avec ce code.", 404);
   const ns = r.jeu === "blackjack" ? c.env.ROOMS_BLACKJACK : c.env.ROOMS_ROULETTE;
   return versRoom(c, ns, `room:${code}:${r.hote_id}`, {
-    code, solo: false, hoteId: r.hote_id, nom: `Room ${code}`, min: r.mise_min, max: r.mise_max,
+    code, solo: false, hoteId: r.hote_id, nom: `Room ${code}`, theme: trouverTheme(r.theme).id, min: r.mise_min, max: r.mise_max,
   });
 });
 

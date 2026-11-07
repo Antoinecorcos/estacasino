@@ -12,6 +12,8 @@ export interface ConfigRoom {
   solo: boolean;
   hoteId: string | null;
   nom: string;
+  /** Thème de table imposé (room : celui de l'hôte). null = chacun voit le sien. */
+  theme: string | null;
   min: number;
   max: number;
 }

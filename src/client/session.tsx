@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { api, ErreurApi, type Moi } from "./api";
+import { appliquerTheme } from "./theme";
 
 interface ValeurSession {
   moi: Moi | null;
@@ -30,6 +31,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void rafraichir();
   }, [rafraichir]);
+  useEffect(() => appliquerTheme(moi?.theme), [moi?.theme]);
 
   const majSolde = useCallback((solde: number) => setMoi((m) => (m && m.solde !== solde ? { ...m, solde } : m)), []);
   const notifier = useCallback((message: string, erreur = false) => {

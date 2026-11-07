@@ -68,3 +68,16 @@ export function useCompteARebours(echeance: number | null): number | null {
   if (!echeance) return null;
   return Math.max(0, Math.ceil((echeance - maintenant) / 1000));
 }
+
+/** Vrai sur un écran étroit (téléphone). */
+export function useEtroit(largeurMax = 700): boolean {
+  const requete = `(max-width: ${largeurMax}px)`;
+  const [etroit, setEtroit] = useState(() => window.matchMedia(requete).matches);
+  useEffect(() => {
+    const m = window.matchMedia(requete);
+    const f = () => setEtroit(m.matches);
+    m.addEventListener("change", f);
+    return () => m.removeEventListener("change", f);
+  }, [requete]);
+  return etroit;
+}

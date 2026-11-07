@@ -39,6 +39,8 @@ export interface BjEtat {
   code: string | null; // null pour une table solo
   solo: boolean;
   hoteId: string | null;
+  /** Thème de la room (celui de l'hôte), ou null. */
+  theme: string | null;
   phase: BjPhase;
   limites: Limites;
   joueurs: BjJoueur[];
@@ -76,9 +78,12 @@ export type RlPhase = "attente" | "mises" | "tirage" | "resultats";
 
 export interface RlEtat {
   jeu: "roulette";
-  code: string | null; // null pour La Grande Roue
+  code: string | null; // null pour La Grande Roue ou une table solo
+  /** Table solo : le joueur lance la bille lui-même. */
+  solo: boolean;
   nom: string;
   hoteId: string | null;
+  theme: string | null;
   phase: RlPhase;
   limites: Limites;
   joueurs: RlJoueur[];
@@ -90,7 +95,11 @@ export interface RlEtat {
   remarque: string | null;
 }
 
-export type RlMessageClient = { t: "miser"; cle: CleMise; montant: number } | { t: "annuler" };
+export type RlMessageClient =
+  | { t: "miser"; cle: CleMise; montant: number }
+  | { t: "retirer"; cle: CleMise; montant: number }
+  | { t: "annuler" }
+  | { t: "lancer" };
 
 // ───────────── Commun ─────────────
 

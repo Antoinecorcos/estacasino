@@ -19,7 +19,14 @@ Worker « estacasino » (Hono) ───► Durable Objects
 
 ## Jouer seul
 - **Blackjack** : « Jouer seul » ouvre une table privée face au croupier (une instance par joueur).
-- **Roulette** : « La Grande Roue », table publique permanente. Cycle de 30 s (20 s de mises, 6 s de tirage, 4 s de résultats), **seulement quand quelqu'un est présent**.
+- **Roulette solo** : table privée, le joueur lance la bille quand il veut.
+- **Roulette « La Grande Roue »** : table publique permanente. Cycle de 30 s (18 s de mises, 8 s de tirage animé, 4 s de résultats), **seulement quand quelqu'un est présent**.
+
+## Rendu des jeux
+- Tables et roue en 3D avec three.js, chargé à la demande sur les écrans de jeu uniquement (`src/client/trois/`).
+- La mise en page reste en HTML : les cartes et piles de jetons HTML servent de repères invisibles, et chaque objet 3D se place sous son repère. Sans WebGL (ou avec « réduire les animations »), le jeu s'affiche en 2D, sans rien perdre.
+- Le hasard reste exclusivement côté serveur : l'animation de la roue conduit la bille jusqu'au numéro déjà tiré.
+- Effets et sons : `src/client/fx/` (sons synthétisés avec la Web Audio API, aucun fichier audio).
 
 ## Rooms privées
 - Code de 5 lettres sans I ni O (24⁵ ≈ 8 millions de combinaisons). Un code n'est réattribué qu'après fermeture de la room et 24 h d'attente.

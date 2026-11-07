@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import type { Produit } from "../../shared/boutique";
 import { formatPrix } from "../../shared/regles";
+import { trouverTheme } from "../../shared/themes";
 import { api } from "../api";
+import { ApercuTheme } from "../components/ApercuTheme";
 import { Avatar } from "../components/Avatar";
 import { Page } from "../components/Elements";
 import { Lien } from "../router";
@@ -50,6 +52,7 @@ export function Boutique() {
   const pack = produits.find((p) => p.type === "pack");
   const avatars = produits.filter((p) => p.type === "avatar");
   const accessoires = produits.filter((p) => p.type === "accessoire");
+  const themes = produits.filter((p) => p.type === "theme");
 
   const Fiche = ({ p }: { p: ProduitAffiche }) => (
     <article className={`carte-ui produit${p.type === "pack" ? " pack" : ""}`}>
@@ -57,6 +60,8 @@ export function Boutique() {
         <div className="rangee" style={{ gap: 6 }} aria-hidden="true">
           {avatars.map((a) => <Avatar key={a.id} config={a.apercu} taille={84} />)}
         </div>
+      ) : p.type === "theme" ? (
+        <ApercuTheme theme={trouverTheme(p.theme)} />
       ) : (
         <div className="apercu"><Avatar config={p.apercu} taille={120} titre={`Aperçu : ${p.nom}`} /></div>
       )}
@@ -88,10 +93,14 @@ export function Boutique() {
           <div className="surtitre">La boutique</div>
           <h1 style={{ fontSize: 40 }}>Le style, pas la chance.</h1>
           <p className="muet" style={{ maxWidth: 640 }}>
-            Uniquement des cosmétiques pour votre avatar. Aucun achat ne donne de jetons ni d'avantage en jeu. Prix TTC, TVA incluse.
+            Uniquement des cosmétiques : avatars, accessoires et thèmes de table. Aucun achat ne donne de jetons ni d'avantage en jeu. Prix TTC, TVA incluse.
           </p>
         </div>
         {pack && <Fiche p={pack} />}
+        <section className="pile" style={{ gap: 14 }}>
+          <h2 className="surtitre">Thèmes de table · {formatPrix(themes[0]?.prixCentimes ?? 299)}</h2>
+          <div className="grille-boutique">{themes.map((p) => <Fiche key={p.id} p={p} />)}</div>
+        </section>
         <section className="pile" style={{ gap: 14 }}>
           <h2 className="surtitre">Avatars premium · {formatPrix(299)}</h2>
           <div className="grille-boutique">{avatars.map((p) => <Fiche key={p.id} p={p} />)}</div>
@@ -101,7 +110,7 @@ export function Boutique() {
           <div className="grille-boutique">{accessoires.map((p) => <Fiche key={p.id} p={p} />)}</div>
         </section>
         <p className="muet" style={{ fontSize: 13 }}>
-          Paiement sécurisé par Stripe. Les accessoires et avatars achetés s'équipent depuis votre <Lien href="/profil">profil</Lien>.
+          Paiement sécurisé par Stripe. Les avatars, accessoires et thèmes achetés s'équipent depuis votre <Lien href="/profil">profil</Lien>.
         </p>
       </div>
 
@@ -110,7 +119,7 @@ export function Boutique() {
           <div className="carte-ui formulaire" style={{ width: "100%" }}>
             <h2 id="titre-achat" style={{ fontSize: 28 }}>{choix.nom}</h2>
             <div className="rangee" style={{ gap: 16, flexWrap: "nowrap" }}>
-              <Avatar config={choix.apercu} taille={84} />
+              {choix.type === "theme" ? <div style={{ width: 140 }}><ApercuTheme theme={trouverTheme(choix.theme)} /></div> : <Avatar config={choix.apercu} taille={84} />}
               <div className="prix">
                 {formatPrix(choix.prixCentimes)}
                 <small>TTC</small>

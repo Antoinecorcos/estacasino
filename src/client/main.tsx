@@ -7,7 +7,7 @@ import { Classement } from "./pages/Classement";
 import { Lobby } from "./pages/Lobby";
 import { Mentions } from "./pages/Mentions";
 import { Profil } from "./pages/Profil";
-import { PageBlackjackSolo, PageGrandeRoue, PageRoom } from "./pages/Room";
+import { PageBlackjackSolo, PageGrandeRoue, PageRoom, PageRouletteSolo } from "./pages/Room";
 import { naviguer, useChemin } from "./router";
 import { SessionProvider, useSession } from "./session";
 import "./styles.css";
@@ -38,6 +38,7 @@ function Contenu() {
   if (chemin === "/") return <Lobby />;
   if (chemin === "/blackjack") return <PageBlackjackSolo />;
   if (chemin === "/roulette") return <PageGrandeRoue />;
+  if (chemin === "/roulette/solo") return <PageRouletteSolo />;
   if (chemin === "/profil") return <Profil />;
   const room = /^\/room\/([A-Za-z]{5})$/.exec(chemin);
   if (room) return <PageRoom code={room[1].toUpperCase()} />;

@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { type Carte as TCarte, RANG_AFFICHE, SYMBOLES } from "../../shared/cartes";
 import { formatJetons } from "../../shared/regles";
+import { basculerSon, useSonActif } from "../fx/sons";
 import { Lien } from "../router";
 import { useSession } from "../session";
 import { Avatar } from "./Avatar";
@@ -62,10 +63,7 @@ export function Entete() {
               <Lien href="/profil">Profil</Lien>
             </nav>
             <div className="soldes">
-              <div className="solde" title="Vos jetons pour jouer. Ils sont conservés d'une saison à l'autre.">
-                <div className="etiquette">Solde total</div>
-                <div className="valeur">{formatJetons(moi.solde)}</div>
-              </div>
+              <SoldeAnime valeur={moi.solde} />
               {moi.saison && (
                 <div className="solde saison" title="Vos gains nets de la saison : c'est ce chiffre qui compte pour le classement.">
                   <div className="etiquette">Gains de saison</div>
@@ -75,6 +73,7 @@ export function Entete() {
                   </div>
                 </div>
               )}
+              <BoutonSon />
               <Lien href="/profil" className="profil-mini" aria-label="Mon profil">
                 <Avatar config={moi.avatar} taille={40} />
                 <span className="pseudo">{moi.pseudo}</span>
@@ -93,6 +92,52 @@ export function Entete() {
         )}
       </div>
     </header>
+  );
+}
+
+/** Solde total : le chiffre défile vers sa nouvelle valeur et s'éclaire à la hausse ou à la baisse. */
+function SoldeAnime({ valeur }: { valeur: number }) {
+  const [affiche, setAffiche] = useState(valeur);
+  const [sens, setSens] = useState<"" | "monte" | "baisse">("");
+  const courant = useRef(valeur);
+  useEffect(() => {
+    const depart = courant.current;
+    if (depart === valeur) return;
+    setSens(valeur > depart ? "monte" : "baisse");
+    const t0 = performance.now();
+    let raf = 0;
+    const pas = (now: number) => {
+      const s = Math.min(1, (now - t0) / 600);
+      const v = Math.round(depart + (valeur - depart) * (1 - Math.pow(1 - s, 3)));
+      courant.current = v;
+      setAffiche(v);
+      if (s < 1) raf = requestAnimationFrame(pas);
+    };
+    raf = requestAnimationFrame(pas);
+    const fin = setTimeout(() => setSens(""), 900);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(fin);
+      courant.current = valeur;
+    };
+  }, [valeur]);
+  return (
+    <div id="solde-total" className={`solde ${sens}`} title="Vos jetons pour jouer. Ils sont conservés d'une saison à l'autre.">
+      <div className="etiquette">Solde total</div>
+      <div className="valeur">{formatJetons(affiche)}</div>
+    </div>
+  );
+}
+
+function BoutonSon() {
+  const actif = useSonActif();
+  return (
+    <button type="button" className="bouton-icone" aria-pressed={actif} aria-label={actif ? "Couper le son" : "Activer le son"} title={actif ? "Couper le son" : "Activer le son"} onClick={basculerSon}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M11 5 6 9H3v6h3l5 4z" />
+        {actif ? <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" /> : <path d="m16 9 6 6m0-6-6 6" />}
+      </svg>
+    </button>
   );
 }
 

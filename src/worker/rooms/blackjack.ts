@@ -315,6 +315,7 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
       code: this.config?.code ?? null,
       solo: this.config?.solo ?? false,
       hoteId: this.config?.hoteId ?? null,
+      theme: this.config?.theme ?? null,
       phase: this.phase,
       limites: { min: this.config?.min ?? 0, max: this.config?.max ?? 0 },
       joueurs: [...this.joueurs.values()].sort((a, b) => a.place - b.place),

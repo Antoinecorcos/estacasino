@@ -71,7 +71,8 @@ describe("avatars et boutique", () => {
   it("chaque produit ne débloque que des pièces payantes et l'aperçu est valide une fois acheté", () => {
     for (const p of PRODUITS) {
       expect(p.pieces.length).toBeGreaterThan(0);
-      expect(validerAvatar(p.apercu, (cle) => p.pieces.includes(cle))).not.toBeNull();
+      if (p.type === "theme") expect(p.pieces).toEqual([`theme:${p.theme}`]);
+      else expect(validerAvatar(p.apercu, (cle) => p.pieces.includes(cle))).not.toBeNull();
     }
   });
 });

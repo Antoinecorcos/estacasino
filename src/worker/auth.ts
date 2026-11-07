@@ -13,6 +13,7 @@ export interface JoueurSession {
   pseudo: string;
   solde: number;
   avatar: string;
+  theme: string;
 }
 
 export async function ouvrirSession(c: Context<{ Bindings: Env }>, joueurId: string): Promise<void> {
@@ -40,7 +41,7 @@ export async function joueurConnecte(c: Context<{ Bindings: Env }>): Promise<Jou
   const jeton = getCookie(c, COOKIE);
   if (!jeton || jeton.length !== 64) return null;
   return c.env.DB.prepare(
-    `SELECT j.id, j.pseudo, j.solde, j.avatar FROM sessions s JOIN joueurs j ON j.id = s.joueur_id
+    `SELECT j.id, j.pseudo, j.solde, j.avatar, j.theme FROM sessions s JOIN joueurs j ON j.id = s.joueur_id
      WHERE s.token_hash = ? AND s.expire_le > ?`,
   )
     .bind(await sha256(jeton), Date.now())

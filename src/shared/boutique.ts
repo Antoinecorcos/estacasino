@@ -1,11 +1,12 @@
 import type { ConfigAvatar } from "./avatar";
+import { THEMES } from "./themes";
 
 // Boutique : uniquement des cosmétiques. Prix en centimes, TVA INCLUSE (TTC).
 // Côté Stripe, les prix sont créés avec tax_behavior = "inclusive" :
 // le prix affiché est exactement le prix payé, et Stripe Tax calcule la TVA contenue dedans.
 // Aucun produit ne donne de jetons, ni directement ni indirectement.
 
-export type TypeProduit = "accessoire" | "avatar" | "pack";
+export type TypeProduit = "accessoire" | "avatar" | "pack" | "theme";
 
 export interface Produit {
   id: string;
@@ -13,8 +14,10 @@ export interface Produit {
   nom: string;
   description: string;
   prixCentimes: number; // TTC
-  pieces: string[]; // pièces d'avatar débloquées, ex. "tenue:smoking"
+  pieces: string[]; // pièces débloquées, ex. "tenue:smoking" ou "theme:minuit"
   apercu: ConfigAvatar; // avatar utilisé pour la vignette
+  /** Pour un thème de table : son identifiant (la vignette montre une table). */
+  theme?: string;
 }
 
 const base: ConfigAvatar = { peau: "p2", couleurCheveux: "brun", cheveux: "court", tenue: "col_roule", accessoire: "aucun", fond: "ardoise" };
@@ -85,7 +88,20 @@ export const PRODUITS: Produit[] = [
   accessoire("collier_perles", "Collier de perles", "Un rang de perles nacrées.", { peau: "p3", cheveux: "chignon", couleurCheveux: "chatain", tenue: "chemise" }),
   accessoire("casquette", "Casquette en tweed", "Gavroche, mais chic.", { peau: "p2", couleurCheveux: "roux" }),
   accessoire("creoles", "Créoles en laiton", "Elles captent toute la lumière de la salle.", { peau: "p6", cheveux: "boucles", couleurCheveux: "noir" }),
+  ...THEMES.filter((t) => !t.gratuit).map(
+    (t): Produit => ({
+      id: `theme_${t.id}`,
+      type: "theme",
+      nom: t.nom,
+      description: `${t.description} Vos amis le voient dans les rooms que vous ouvrez.`,
+      prixCentimes: 299,
+      pieces: [`theme:${t.id}`],
+      apercu: base,
+      theme: t.id,
+    }),
+  ),
 ];
+
 
 export function trouverProduit(id: string): Produit | undefined {
   return PRODUITS.find((x) => x.id === id);

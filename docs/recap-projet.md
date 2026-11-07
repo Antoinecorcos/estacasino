@@ -260,3 +260,21 @@ Architecture technique détaillée : voir `docs/architecture.md`.
 | Grande Roue | Un tirage toutes les 30 secondes, **seulement s'il y a quelqu'un** |
 
 **Version 0.1 livrée** : inscription, connexion, mot de passe oublié, lobby, blackjack solo et en room, roulette « La Grande Roue » et en room, rooms par code, bonus quotidien et filet de sécurité, classement de saison (général, blackjack, roulette), boutique Stripe d'avatars, éditeur d'avatar, page des règles et mentions. Voir le `README.md` pour la mise en ligne.
+
+---
+
+## 14. Décisions prises (tour n° 4) et version 0.2
+
+| Sujet | Décision |
+|---|---|
+| Priorité | **Thèmes de table** achetables : Minuit, Velours, Riviera, Onyx (Club reste offert). Prix provisoire **2,99 €**, à valider |
+| Thème en room | Tous les joueurs d'une room voient le thème de l'hôte |
+| Saison | **Saison 0** (lancement), sans date de fin fixée ; la saison 1 (6 semaines) ouvrira ensuite |
+| Classement | Classé dès **5 parties** jouées dans la saison |
+| Gameplay | Refonte inspirée de l'exemple fourni : tables et roue en 3D, animations, sons |
+
+**Version 0.2** :
+- Blackjack : table 3D (feutre, bois, sabot), cartes distribuées une à une depuis le sabot, carte du croupier qui se retourne, piles de jetons, jetons ½ / ×2 / mise précédente, raccourcis clavier (T, R, D, S, Espace).
+- Roulette : roue 3D avec bille qui ralentit et rebondit avant de tomber dans la case tirée par le serveur ; **roulette solo** où l'on lance soi-même la bille ; Annuler / Effacer / Rejouer / ×2 ; tendance rouge / noir / zéro.
+- Effets : jetons qui volent vers le solde, solde qui défile, pluie de pièces et bannière sur les gros gains, sons synthétisés (coupables depuis l'en-tête).
+- Rendu 2D de secours automatique si l'appareil ne gère pas la 3D.
