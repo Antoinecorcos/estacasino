@@ -18,10 +18,12 @@ import { auHasard, dormir, ErreurJeu, type Identite, RoomBase } from "./base";
 
 const DELAI_MISES_MS = 12_000; // room : temps laissé aux autres pour miser après la première mise
 const DELAI_TOUR_MS = 20_000; // temps pour jouer une main avant « rester » automatique
-const PAUSE_CARTE_MS = 650; // rythme des cartes du croupier
+const PAUSE_CARTE_MS = 1_100; // rythme des cartes du croupier (le temps de suivre chaque carte)
+const PAUSE_RETOURNE_MS = 900; // après avoir retourné sa carte cachée
 
 export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
   private phase: BjPhase = "attente";
+  private donne = 0;
   private joueurs = new Map<string, BjJoueur>();
   private sabot: Carte[] = [];
   private croupier: Carte[] = [];
@@ -149,6 +151,7 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
       this.sabot = nouveauSabot(NB_JEUX, aleatoire);
       this.remarque = "Le croupier mélange un nouveau sabot. Avec élégance, évidemment.";
     }
+    this.donne++;
     for (const j of this.joueurs.values()) j.mains = [];
     for (const j of participants) {
       j.mains = [{ cartes: [], mise: j.mise, separee: false, doublee: false, terminee: false }];
@@ -259,14 +262,15 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
     this.diffuser();
     // Le croupier ne tire que s'il reste au moins une main « vivante » (ni bust, ni blackjack).
     const vivantes = this.ordre().some((j) => j.mains.some((m) => !estBust(m.cartes) && !estBlackjack(m.cartes, m.separee)));
+    // Rythme d'une vraie table : la carte cachée se retourne, puis chaque carte arrive l'une après l'autre.
+    await dormir(PAUSE_RETOURNE_MS);
     if (vivantes) {
       while (croupierDoitTirer(this.croupier)) {
-        await dormir(PAUSE_CARTE_MS);
         this.croupier.push(this.tirer());
         this.diffuser();
+        await dormir(PAUSE_CARTE_MS);
       }
     }
-    await dormir(PAUSE_CARTE_MS);
     await this.regler();
   }
 
@@ -317,6 +321,7 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
       hoteId: this.config?.hoteId ?? null,
       theme: this.config?.theme ?? null,
       phase: this.phase,
+      donne: this.donne,
       limites: { min: this.config?.min ?? 0, max: this.config?.max ?? 0 },
       joueurs: [...this.joueurs.values()].sort((a, b) => a.place - b.place),
       spectateurs: Math.max(0, this.idsConnectes().size - [...this.joueurs.values()].filter((j) => j.connecte).length),

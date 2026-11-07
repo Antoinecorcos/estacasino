@@ -74,13 +74,13 @@ function Siege({
       <div className="siege-mains">
         {j.mains.map((m, i) => (
           <div key={i} className={`siege-main${m.issue === "bust" || m.issue === "perdu" ? " perdue" : ""}${m.issue === "gagne" || m.issue === "blackjack" ? " gagnee" : ""}`}>
-            <span className={`pastille${actif && etat.tour?.main === i ? " tour" : ""}${m.issue ? ` ${m.issue}` : ""}`}>
+            <span key={`${m.cartes.length}-${m.issue ?? ""}`} className={`pastille differee${actif && etat.tour?.main === i ? " tour" : ""}${m.issue ? ` ${m.issue}` : ""}`}>
               {m.issue ? LIBELLES_ISSUE[m.issue] : totalAffiche(m.cartes)}
               {m.issue && m.rendu && m.rendu > m.mise ? ` +${formatJetons(m.rendu - m.mise)}` : ""}
             </span>
             <div className="rang-cartes">
               {m.cartes.map((c, k) => (
-                <AncreCarte key={k} carte={c} ordre={k * (nbJoueurs + 1) + rang} surbrillance={actif && etat.tour?.main === i} />
+                <AncreCarte key={`${etat.donne}-${i}-${k}-${c.r}${c.c}`} carte={c} ordre={k * (nbJoueurs + 1) + rang} surbrillance={actif && etat.tour?.main === i} />
               ))}
             </div>
           </div>
@@ -110,6 +110,7 @@ export function TableBlackjack({ chemin }: { chemin: string }) {
   const hote = useRef<HTMLDivElement>(null);
   const table3d = useRef<Table3D | null>(null);
   const celebree = useRef<string>("");
+  const [distribution, setDistribution] = useState(false);
   const etroit = useEtroit();
   const theme = trouverTheme(etat?.theme ?? profil?.theme);
   useThemeRoom(etat?.theme, profil?.theme);
@@ -163,12 +164,22 @@ export function TableBlackjack({ chemin }: { chemin: string }) {
         void volerJeton(siege, ".zone-croupier", { valeur: 100, duree: 420 });
       } else sons.egalite();
       void rafraichir();
-    }, 450);
+    }, 1200);
     return () => clearTimeout(t);
   }, [moiJoueur, rafraichir]);
 
+  // Distribution : le temps que toutes les cartes arrivent du sabot, les actions attendent.
+  const donne = etat?.donne ?? 0;
+  const nbCartesDonne = etat ? 2 * (etat.joueurs.filter((j) => j.mains.length > 0).length + 1) : 0;
+  useEffect(() => {
+    if (!donne) return;
+    setDistribution(true);
+    const t = setTimeout(() => setDistribution(false), nbCartesDonne * 520 + 750);
+    return () => clearTimeout(t);
+  }, [donne]);
+
   const enMises = etat?.phase === "attente" || etat?.phase === "mises";
-  const monTour = !!etat && etat.tour?.joueurId === moi && etat.phase === "jeu";
+  const monTour = !!etat && etat.tour?.joueurId === moi && etat.phase === "jeu" && !distribution;
   const maMain: BjMain | null = monTour && moiJoueur ? moiJoueur.mains[etat!.tour!.main] : null;
 
   // Raccourcis clavier.
@@ -261,7 +272,7 @@ export function TableBlackjack({ chemin }: { chemin: string }) {
           <div className="zone-croupier">
             <div className="rang-cartes">
               {etat.croupier.map((c, i) => (
-                <AncreCarte key={i} carte={c} ordre={i * (nb + 1) + ordreCroupier} />
+                <AncreCarte key={`${etat.donne}-c-${i}`} carte={c} ordre={i * (nb + 1) + ordreCroupier} />
               ))}
             </div>
             <div className="etiquette-table">
@@ -349,7 +360,9 @@ export function TableBlackjack({ chemin }: { chemin: string }) {
         ) : (
           <div className="panneau-jeu" style={{ justifyContent: "center" }}>
             <span className="muet">
-              {etat.phase === "croupier" ? "Le croupier joue…" : etat.tour ? `Au tour de ${etat.joueurs.find((j) => j.id === etat.tour?.joueurId)?.pseudo ?? "…"}` : "…"}
+              {distribution && etat.phase === "jeu"
+                ? "Le croupier distribue…"
+                : etat.phase === "croupier" ? "Le croupier joue…" : etat.tour ? `Au tour de ${etat.joueurs.find((j) => j.id === etat.tour?.joueurId)?.pseudo ?? "…"}` : "…"}
             </span>
             {etat.tour && <Compteur secondes={secondes} total={20} />}
           </div>

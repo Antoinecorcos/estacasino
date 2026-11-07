@@ -355,8 +355,8 @@ kbd { font: inherit; font-size: 11px; font-weight: 800; padding: 1px 6px; border
 .mise-affichee strong { font-size: 22px; }
 
 @media (max-width: 760px) {
-  .table-bj { --cw: 36px; height: 560px; border-width: 8px; border-radius: 0 0 40% 40% / 0 0 30% 30%; }
-  .table-bj.solo { --cw: 50px; height: 400px; }
+  .table-bj { --cw: 36px; height: 560px !important; border-width: 8px; border-radius: 0 0 40% 40% / 0 0 30% 30%; }
+  .table-bj.solo { --cw: 50px; height: 400px !important; }
   .table-toile { inset: -8px; width: calc(100% + 16px); height: calc(100% + 8px); }
   .plaque { padding-right: 8px; }
   .plaque-texte .pseudo { max-width: 56px; font-size: 11px; }
@@ -390,3 +390,36 @@ kbd { font: inherit; font-size: 11px; font-weight: 800; padding: 1px 6px; border
 .case-tapis .ma-mise { animation: apparition 0.3s cubic-bezier(.2, 1.6, .4, 1) both; }
 .case-tapis.gagnante { animation: case-gagnante 0.7s ease-in-out infinite alternate; }
 @keyframes case-gagnante { from { box-shadow: 0 0 0 3px var(--accent); } to { box-shadow: 0 0 0 3px var(--accent), 0 0 24px color-mix(in srgb, var(--accent) 95%, transparent); } }
+
+/* ───── Pages de jeu : tout tient dans l'écran, sans défilement inutile ───── */
+.page-jeu .pied { display: none; }
+.page-jeu .ecran-jeu .barre-jeu { padding: 8px 0; }
+.page-jeu .remarque { min-height: 0; padding: 6px 0 0; font-size: 16px; }
+.page-jeu .panneau-jeu { margin: 6px 0 12px; padding: 14px 18px; }
+.table-bj { height: clamp(380px, calc(100dvh - 352px), 560px); }
+.table-bj.solo { height: clamp(360px, calc(100dvh - 352px), 520px); }
+.cadre-roue { max-width: min(400px, calc((100dvh - 470px) * 1.13)); min-width: 240px; }
+.page-jeu .roulette-haut { gap: 14px; }
+.page-jeu .panneau-roue { padding: 12px; gap: 8px; }
+.page-jeu .panneau-mises { padding: 16px 18px; gap: 12px; }
+.page-jeu .tapis.horizontal { grid-template-rows: repeat(3, 44px) 36px 36px; padding: 10px; }
+
+/* Le verdict et les totaux attendent que les cartes soient posées. */
+.message-table { animation-delay: 0.9s; }
+.pastille.differee { animation: apparition 0.3s ease 0.6s both; }
+@media (max-height: 820px) and (min-width: 761px) {
+  .page-jeu .tapis.horizontal { grid-template-rows: repeat(3, 36px) 28px 28px; }
+  .page-jeu .cadre-roue { min-width: 210px; }
+  .page-jeu .panneau-mises { gap: 8px; padding: 12px 16px; }
+  .page-jeu .panneau-mises .jeton { width: 44px; height: 44px; }
+  .page-jeu .panneau-roue .tendance { display: none; }
+  .page-jeu .panneau-mises h2 { display: none; }
+}
+@media (max-width: 760px) {
+  /* Sur téléphone, en jeu : le menu laisse la place à la table (le bouton « Lobby » permet de revenir). */
+  .page-jeu .entete .nav { display: none; }
+  .page-jeu .table-bj.solo { height: clamp(280px, calc(100dvh - 476px), 420px) !important; }
+  .page-jeu .panneau-jeu .jeton { width: 42px; height: 42px; border-width: 4px; font-size: 11px; }
+  .page-jeu .panneau-jeu { gap: 10px; }
+  .page-jeu .barre-jeu h1 { font-size: 20px !important; }
+}

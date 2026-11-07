@@ -1,4 +1,4 @@
-import React, { StrictMode } from "react";
+import React, { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Entete, Pied } from "./components/Elements";
 import { Accueil, Connexion, Inscription, MotDePasseOublie } from "./pages/Auth";
@@ -21,9 +21,16 @@ const PAGES_PUBLIQUES: Record<string, () => React.JSX.Element | null> = {
   "/boutique": Boutique,
 };
 
+/** Pages de jeu : plein écran, sans pied de page (la mention « jetons fictifs » est dans la barre du jeu). */
+const PAGE_JEU = /^\/(blackjack|roulette(\/solo)?|room\/[A-Za-z]{5})$/;
+
 function Contenu() {
   const chemin = useChemin();
   const { moi, charge } = useSession();
+  const jeu = !!moi && PAGE_JEU.test(chemin);
+  useEffect(() => {
+    document.body.classList.toggle("page-jeu", jeu);
+  }, [jeu]);
   if (!charge) return <main className="page" />;
 
   const Publique = PAGES_PUBLIQUES[chemin];

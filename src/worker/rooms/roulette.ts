@@ -5,11 +5,11 @@ import { aleatoire } from "../crypto";
 import { crediter, debiter, enregistrerResultat } from "../economie";
 import { auHasard, ErreurJeu, type Identite, RoomBase } from "./base";
 
-// Room et Grande Roue : cycle de 30 secondes (18 s de mises, 8 s de tirage animé, 4 s de résultats).
+// Room et Grande Roue : cycle de 30 secondes (15 s de mises, 11 s de tirage animé, 4 s de résultats).
 // La roue ne tourne que s'il y a quelqu'un dans la room.
 // Table solo : pas de minuteur, le joueur lance la bille quand il veut.
-const DUREE_MISES_MS = 18_000;
-const DUREE_TIRAGE_MS = 8_000;
+const DUREE_MISES_MS = 15_000;
+const DUREE_TIRAGE_MS = 11_000;
 const DUREE_RESULTATS_MS = 4_000;
 const DUREE_RESULTATS_SOLO_MS = 2_500;
 const HISTORIQUE = 14;

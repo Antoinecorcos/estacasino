@@ -42,6 +42,8 @@ export interface BjEtat {
   /** Thème de la room (celui de l'hôte), ou null. */
   theme: string | null;
   phase: BjPhase;
+  /** Numéro de la donne en cours : change à chaque distribution (sert à animer chaque nouvelle carte). */
+  donne: number;
   limites: Limites;
   joueurs: BjJoueur[];
   spectateurs: number;

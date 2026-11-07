@@ -15,7 +15,7 @@ export function BarreRoom({ titre, code, detail, statut }: { titre: string; code
         <Lien href="/" className="btn btn-petit" aria-label="Retour au lobby">← Lobby</Lien>
         <div className="pile" style={{ gap: 2 }}>
           <h1 style={{ fontSize: 24 }}>{titre}</h1>
-          <span className="muet" style={{ fontSize: 13 }}>{detail}</span>
+          <span className="muet" style={{ fontSize: 13 }}>{detail} · <span title="Jetons fictifs, sans aucune valeur monétaire. Réservé aux 18 ans et plus.">jetons fictifs, 18+</span></span>
         </div>
       </div>
       <div className="rangee" style={{ gap: 12 }}>

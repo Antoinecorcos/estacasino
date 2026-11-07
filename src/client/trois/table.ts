@@ -17,7 +17,8 @@ export interface Table3D {
 }
 
 type Three = typeof TT;
-const PAUSE_DONNE = 230; // écart entre deux cartes distribuées d'un coup (ms)
+const PAUSE_DONNE = 520; // écart entre deux cartes distribuées d'un coup (ms)
+const DUREE_VOL = 650; // trajet du sabot à la place
 
 interface Tween {
   de: TT.Vector3;
@@ -401,7 +402,7 @@ export async function creerTable3D(hote: HTMLElement, themeDepart: Theme, libell
     flip.rotation.z = Math.PI;
     return {
       ancre, ext, flip, face, cle: null, phi: Math.PI, phiCible: Math.PI, lacet: (Math.random() - 0.5) * 0.06, sonJoue: false,
-      tw: { de, vers: cible, t0: now + delai, duree: cs ? 430 : 1, arc: cs ? 0.7 : 0, vrille: cs ? 1.4 : 0 },
+      tw: { de, vers: cible, t0: now + delai, duree: cs ? DUREE_VOL : 1, arc: cs ? 0.75 : 0, vrille: cs ? 1.4 : 0 },
     };
   };
 
@@ -447,7 +448,7 @@ export async function creerTable3D(hote: HTMLElement, themeDepart: Theme, libell
     for (const [a, m] of cartes) {
       if (a.isConnected && (a as HTMLElement).offsetParent) continue;
       cartes.delete(a);
-      m.tw = { de: m.ext.position.clone(), vers: defausse, t0: now + k++ * 25, duree: 300, arc: 0.35, vrille: -0.8, disparait: true };
+      m.tw = { de: m.ext.position.clone(), vers: defausse, t0: now + k++ * 60, duree: 480, arc: 0.35, vrille: -0.8, disparait: true };
       partantes.add(m);
     }
     if (k) sons.carte();
@@ -525,9 +526,9 @@ export async function creerTable3D(hote: HTMLElement, themeDepart: Theme, libell
       m.ext.position.y += tw.arc * Math.sin(Math.PI * s);
       m.ext.rotation.y = m.lacet + tw.vrille * (1 - e);
       // La carte se retourne une fois posée (ou presque).
-      const cible = s > 0.55 ? m.phiCible : Math.PI;
+      const cible = s > 0.8 ? m.phiCible : Math.PI;
       if (Math.abs(cible - m.phi) > 0.004) {
-        m.phi += (cible - m.phi) * Math.min(1, dt / 0.09);
+        m.phi += (cible - m.phi) * Math.min(1, dt / 0.13);
         occupe = true;
       } else m.phi = cible;
       m.flip.rotation.z = m.phi;

@@ -60,11 +60,11 @@ function moteur(dessiner: Dessin, liberer: () => void): Roue {
         const T = dureeMs;
         const t0 = performance.now();
         const th0 = ang;
-        const A = Math.PI * 2 * 1.3; // tours du plateau pendant le lancer
-        const K = Math.PI * 2 * (7 + Math.random() * 2); // tours de la bille
+        const A = Math.PI * 2 * 1.1; // tours du plateau pendant le lancer
+        const K = Math.PI * 2 * (4.5 + Math.random() * 1.5); // tours de la bille, sur toute la durée
         const cible = idx * PAS - Math.PI / 2;
         const REBONDS = 5.5;
-        const CHUTE = 0.62;
+        const CHUTE = 0.66; // la bille quitte la piste aux deux tiers du lancer
         const trace: Trace[] = [];
         let rebond = -1;
         const image = (now: number) => {
