@@ -1,3 +1,7 @@
 - blackjack score de cartes spoil car montré avant les cartes
 - passer les simples accessoirs de boutique à 0,99€
-- en partie groupée on voit ^pas les mises de roulette des autres
+- en partie groupée on voit pas les mises de roulette des autres
+- enlever le scroll latéral sur le menu principal (equilibrer les blocs)
+- Rajouter une option à 2,99€ avec 2000 Jetons de secours à volonté réinitialisé a chaque saison
+- Une option pareil à 6,99€ avec 5000 à volonté (uniquement quand solde faible)
+- Un historique de l'argent sur la saison sous forme de graphique 
