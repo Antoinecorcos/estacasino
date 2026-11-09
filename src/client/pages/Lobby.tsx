@@ -9,8 +9,11 @@ import {
   ROULETTE_LIMITES_DEFAUT,
 } from "../../shared/regles";
 import { api } from "../api";
+import { LIGUES, trouverLigue } from "../../shared/ligues";
+import { DefisDuJour } from "../components/Defis";
+import { BadgeLigue } from "../components/Ligue";
 import { Carte, Page } from "../components/Elements";
-import { naviguer } from "../router";
+import { Lien, naviguer } from "../router";
 import { useSession } from "../session";
 
 function salutation(): string {
@@ -106,7 +109,10 @@ export function Lobby() {
             </div>
             {moi.saison && (
               <div className="carte-ui" style={{ padding: "14px 18px", minWidth: 200, borderColor: "var(--accent)" }}>
-                <div className="surtitre accent">Gains de la saison</div>
+                <div className="rangee" style={{ justifyContent: "space-between", gap: 8 }}>
+                  <div className="surtitre accent">Gains de la saison</div>
+                  <BadgeLigue id={moi.ligue.id} />
+                </div>
                 <div className="num accent" style={{ fontSize: 28, fontWeight: 800 }}>
                   {moi.saison.gains > 0 ? "+" : ""}
                   {formatJetons(moi.saison.gains)}
@@ -116,6 +122,13 @@ export function Lobby() {
                     ? `Compte pour le classement · ${moi.saison.rang}e`
                     : `Classé après ${moi.saison.minParties} parties (${moi.saison.parties} jouées)`}
                 </div>
+                <Lien href="/profil" className="lien-discret">Voir l'historique de la saison</Lien>
+                {moi.ligue.suivante && moi.saison.parties >= moi.saison.minParties && (
+                  <div className="progression-ligue" title={`Ligue ${moi.ligue.suivante.nom} à ${formatJetons(moi.ligue.suivante.seuil)} jetons de gains`}>
+                    <div className="jauge"><i style={{ width: `${Math.max(0, Math.min(100, (100 * moi.saison.gains) / moi.ligue.suivante.seuil))}%` }} /></div>
+                    <span className="muet">{moi.ligue.suivante.nom} à {formatJetons(moi.ligue.suivante.seuil)}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -132,8 +145,13 @@ export function Lobby() {
                 </div>
                 <div className="corps">
                   <h3 style={{ fontSize: 26 }}>Blackjack</h3>
-                  <p className="muet" style={{ fontSize: 14, flex: 1 }}>Seul face au croupier, tout de suite. Blackjack payé 3 pour 2.</p>
-                  <button type="button" className="btn btn-principal" onClick={() => naviguer("/blackjack")}>Jouer seul</button>
+                  <p className="muet" style={{ fontSize: 14, flex: 1 }}>Seul face au croupier, ou jusqu'à 5 à la même table. Blackjack payé 3 pour 2.</p>
+                  <div className="boutons-jeu">
+                    <button type="button" className="btn btn-principal" onClick={() => naviguer("/blackjack")}>Jouer seul</button>
+                    <button type="button" className="btn btn-contour" onClick={() => { setCreation("blackjack"); setLimites(BLACKJACK_LIMITES_DEFAUT); document.getElementById("code")?.scrollIntoView({ block: "center", behavior: "smooth" }); }}>
+                      Table entre amis
+                    </button>
+                  </div>
                 </div>
               </article>
               <article className="carte-ui carte-jeu">
@@ -141,24 +159,27 @@ export function Lobby() {
                 <div className="corps">
                   <h3 style={{ fontSize: 26 }}>Roulette</h3>
                   <p className="muet" style={{ fontSize: 14, flex: 1 }}>Seul, vous lancez la bille. À La Grande Roue, tout le monde mise ensemble, un tirage toutes les 30 secondes.</p>
-                  <div className="rangee" style={{ gap: 8 }}>
-                    <button type="button" className="btn btn-principal" style={{ flex: 1 }} onClick={() => naviguer("/roulette/solo")}>Jouer seul</button>
-                    <button type="button" className="btn btn-contour" style={{ flex: 1 }} onClick={() => naviguer("/roulette")}>La Grande Roue</button>
+                  <div className="boutons-jeu">
+                    <button type="button" className="btn btn-principal" onClick={() => naviguer("/roulette/solo")}>Jouer seul</button>
+                    <button type="button" className="btn btn-contour" onClick={() => naviguer("/roulette")}>La Grande Roue</button>
                   </div>
                 </div>
               </article>
-              <article className="carte-ui carte-jeu bientot" aria-label="Poker Hold'em, bientôt disponible">
-                <div className="visuel">On installe la table…</div>
-                <div className="corps">
-                  <h3 style={{ fontSize: 26, color: "var(--muet)" }}>Poker Hold'em</h3>
-                  <p className="muet" style={{ fontSize: 14, flex: 1 }}>De 2 à 8 joueurs, en room privée et en tournoi.</p>
-                  <button type="button" className="btn" disabled>Bientôt disponible</button>
-                </div>
-              </article>
+            </div>
+            <h2 className="surtitre" style={{ marginTop: 6 }}>Prochainement</h2>
+            <div className="prochainement">
+              <div className="carte-ui bientot-mini" aria-label="Poker Hold'em, bientôt disponible">
+                <span className="italique">Poker Hold'em</span>
+                <span className="muet">De 2 à 8 joueurs, rooms et tournois</span>
+              </div>
+              <div className="carte-ui bientot-mini" aria-label="Machine à sous, bientôt disponible">
+                <span className="italique">Machine à sous</span>
+                <span className="muet">Une seule machine, très soignée</span>
+              </div>
             </div>
           </section>
 
-          <aside className="pile" style={{ gap: 14, flex: "1 1 320px" }}>
+          <aside className="pile" style={{ gap: 14, flex: "1 1 320px", minWidth: 0 }}>
             <h2 className="surtitre">Jouer entre amis</h2>
             <form className="carte-ui encart" onSubmit={rejoindre}>
               <label htmlFor="code" style={{ fontWeight: 600 }}>Code de room (5 lettres)</label>
@@ -190,7 +211,15 @@ export function Lobby() {
                     <div className="champ" style={{ flex: 1 }}>
                       <label htmlFor="mise-max">{creation === "roulette" ? "Maximum par tour" : "Mise maximum"}</label>
                       <select id="mise-max" className="input" value={limites.max} onChange={(e) => setLimites({ ...limites, max: Number(e.target.value) })}>
-                        {PALIERS_MISE_MAX.filter((v) => v >= limites.min).map((v) => <option key={v} value={v}>{formatJetons(v)}</option>)}
+                        {PALIERS_MISE_MAX.filter((v) => v >= limites.min).map((v) => {
+                          const requise = LIGUES.find((l) => l.miseMaxRoom >= v);
+                          const bloquee = v > trouverLigue(moi.ligue.id).miseMaxRoom;
+                          return (
+                            <option key={v} value={v} disabled={bloquee}>
+                              {formatJetons(v)}{bloquee && requise ? ` (ligue ${requise.nom})` : ""}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
                   </div>
@@ -225,6 +254,8 @@ export function Lobby() {
                 Récupérer
               </button>
             </div>
+
+            <DefisDuJour />
 
             {moi.solde < moi.filet.seuil && (
               <div className="carte-ui encart" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>

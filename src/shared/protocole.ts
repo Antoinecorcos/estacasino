@@ -105,4 +105,14 @@ export type RlMessageClient =
 
 // ───────────── Commun ─────────────
 
-export type MessageServeur<E> = { t: "etat"; etat: E; moi: string } | { t: "erreur"; message: string };
+/** Réactions rapides en room : de courtes phrases, dans le ton de la maison. */
+export const REACTIONS = ["Bien joué", "Bravo !", "Aïe…", "Allez !", "Chanceux…", "Encore !"] as const;
+
+/** Message commun aux deux jeux, envoyé par le client. */
+export type MessageCommun = { t: "reaction"; r: number };
+
+export type MessageServeur<E> =
+  | { t: "etat"; etat: E; moi: string }
+  | { t: "erreur"; message: string }
+  | { t: "defi"; titre: string; recompense: number }
+  | { t: "reaction"; joueurId: string; pseudo: string; r: number };

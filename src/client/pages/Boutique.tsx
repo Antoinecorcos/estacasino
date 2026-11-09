@@ -102,11 +102,11 @@ export function Boutique() {
           <div className="grille-boutique">{themes.map((p) => <Fiche key={p.id} p={p} />)}</div>
         </section>
         <section className="pile" style={{ gap: 14 }}>
-          <h2 className="surtitre">Avatars premium · {formatPrix(299)}</h2>
+          <h2 className="surtitre">Avatars premium · {formatPrix(avatars[0]?.prixCentimes ?? 299)}</h2>
           <div className="grille-boutique">{avatars.map((p) => <Fiche key={p.id} p={p} />)}</div>
         </section>
         <section className="pile" style={{ gap: 14 }}>
-          <h2 className="surtitre">Accessoires · {formatPrix(199)}</h2>
+          <h2 className="surtitre">Accessoires · {formatPrix(accessoires[0]?.prixCentimes ?? 99)}</h2>
           <div className="grille-boutique">{accessoires.map((p) => <Fiche key={p.id} p={p} />)}</div>
         </section>
         <p className="muet" style={{ fontSize: 13 }}>

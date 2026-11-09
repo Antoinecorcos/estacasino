@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { type Carte as TCarte, RANG_AFFICHE, SYMBOLES } from "../../shared/cartes";
 import { formatJetons } from "../../shared/regles";
+import { basculerMusique, reprendreMusique, useMusiqueActive } from "../fx/musique";
 import { basculerSon, useSonActif } from "../fx/sons";
 import { Lien } from "../router";
 import { useSession } from "../session";
@@ -74,6 +75,7 @@ export function Entete() {
                   </div>
                 </div>
               )}
+              <BoutonMusique />
               <BoutonSon />
               <Lien href="/profil" className="profil-mini" aria-label="Mon profil">
                 <Avatar config={moi.avatar} taille={40} />
@@ -127,6 +129,26 @@ function SoldeAnime({ valeur }: { valeur: number }) {
       <div className="etiquette">Solde total</div>
       <div className="valeur">{formatJetons(affiche)}</div>
     </div>
+  );
+}
+
+function BoutonMusique() {
+  const actif = useMusiqueActive();
+  // Le navigateur n'autorise le son qu'après un premier geste : on relance la musique mémorisée au premier clic.
+  useEffect(() => {
+    const premier = () => reprendreMusique();
+    window.addEventListener("pointerdown", premier, { once: true });
+    return () => window.removeEventListener("pointerdown", premier);
+  }, []);
+  return (
+    <button type="button" className="bouton-icone" aria-pressed={actif} aria-label={actif ? "Couper la musique" : "Jouer la musique d'ambiance"} title={actif ? "Couper la musique" : "Musique d'ambiance"} onClick={basculerMusique}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M9 18V5l12-2v13" />
+        <circle cx="6" cy="18" r="3" />
+        <circle cx="18" cy="16" r="3" />
+        {!actif && <path d="m3 3 18 18" />}
+      </svg>
+    </button>
   );
 }
 

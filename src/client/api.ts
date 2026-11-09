@@ -27,6 +27,7 @@ export interface Moi {
   theme: string;
   inventaire: string[];
   saison: { nom: string; fin: number; gains: number; parties: number; rang: number | null; minParties: number } | null;
+  ligue: { id: string; nom: string; suivante: { id: string; nom: string; seuil: number } | null };
   bonus: { disponible: boolean; montant: number; serie: number };
   filet: { seuil: number; montant: number; disponible: boolean; prochain: number };
 }

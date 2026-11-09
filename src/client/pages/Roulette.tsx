@@ -4,6 +4,8 @@ import { formatJetons } from "../../shared/regles";
 import { couleurNumero, type CleMise, miseGagnante } from "../../shared/roulette";
 import { trouverTheme } from "../../shared/themes";
 import { Avatar } from "../components/Avatar";
+import { useAnnonceDefi } from "../components/Defis";
+import { BoutonReactions, BulleReaction } from "../components/Reactions";
 import { Compteur, Jeton, libelleJeton, VALEURS_JETONS } from "../components/Elements";
 import { celebrer, volerJeton } from "../fx/effets";
 import { sons } from "../fx/sons";
@@ -45,7 +47,8 @@ const selecteurCase = (cle: CleMise) => `[data-cle="${cle}"]`;
 
 export function TableRoulette({ chemin }: { chemin: string }) {
   const { moi: profil, majSolde, notifier, rafraichir } = useSession();
-  const { etat, moi, statut, envoyer } = useRoom<RlEtat, RlMessageClient>(chemin, (m) => notifier(m, true));
+  const annoncerDefi = useAnnonceDefi();
+  const { etat, moi, statut, envoyer, reactions, reagir } = useRoom<RlEtat, RlMessageClient>(chemin, (m) => notifier(m, true), annoncerDefi);
   const [jeton, setJeton] = useState(100);
   const [vu, setVu] = useState<number | null>(null); // numéro affiché une fois la bille arrêtée
   const secondes = useCompteARebours(etat?.echeance ?? null);
@@ -141,6 +144,16 @@ export function TableRoulette({ chemin }: { chemin: string }) {
   const { min, max } = etat.limites;
   const ouvert = etat.phase === "mises" && !!moiJoueur;
   const mesMises = moiJoueur?.mises ?? {};
+  // Mises des autres joueurs, case par case (visibles de tous, comme sur un vrai tapis).
+  const autresMises: Record<CleMise, { total: number; joueurs: string[] }> = {};
+  for (const j of etat.joueurs) {
+    if (j.id === moi) continue;
+    for (const [cle, m] of Object.entries(j.mises)) {
+      const a = (autresMises[cle] ??= { total: 0, joueurs: [] });
+      a.total += m;
+      a.joueurs.push(j.pseudo);
+    }
+  }
   const total = Object.values(mesMises).reduce((a, b) => a + b, 0);
   const totalPrecedent = Object.values(dernieresMises.current).reduce((a, b) => a + b, 0);
   const comptes = { rouge: 0, noir: 0, vert: 0 };
@@ -174,6 +187,14 @@ export function TableRoulette({ chemin }: { chemin: string }) {
         />
         <div className="roulette-haut">
           <div className="carte-ui panneau-roue">
+            {!etat.solo && moiJoueur && <BoutonReactions reagir={reagir} className="reactions-roue" />}
+            {reactions.length > 0 && (
+              <div className="pile-reactions">
+                {reactions.map((r) => (
+                  <BulleReaction key={r.id} reaction={r} avecPseudo />
+                ))}
+              </div>
+            )}
             <div className="cadre-roue" ref={hoteRoue}>
               {vu !== null && (
                 <div key={`${vu}-${etat.historique.length}`} className={`resultat-bulle ${classeCouleur(vu)}`} aria-live="polite">
@@ -274,7 +295,8 @@ export function TableRoulette({ chemin }: { chemin: string }) {
                   className={`case-tapis ${c.classe}${c.texte ? " texte" : ""}${gagnante ? " gagnante" : ""}`}
                   style={{ gridColumn: col, gridRow: row }}
                   disabled={!ouvert}
-                  aria-label={`Miser ${formatJetons(jeton)} sur ${c.libelle}${maMise ? `, déjà ${formatJetons(maMise)}` : ""}`}
+                  aria-label={`Miser ${formatJetons(jeton)} sur ${c.libelle}${maMise ? `, déjà ${formatJetons(maMise)}` : ""}${autresMises[c.cle] ? `, autres joueurs : ${formatJetons(autresMises[c.cle].total)}` : ""}`}
+                  title={autresMises[c.cle] ? `${autresMises[c.cle].joueurs.join(", ")} : ${formatJetons(autresMises[c.cle].total)}` : undefined}
                   onClick={() => miser(c.cle, jeton)}
                   onContextMenu={(e) => {
                     e.preventDefault();
@@ -283,6 +305,11 @@ export function TableRoulette({ chemin }: { chemin: string }) {
                 >
                   {c.libelle}
                   {maMise ? <span key={maMise} className="ma-mise">{libelleJeton(maMise)}</span> : null}
+                  {autresMises[c.cle] ? (
+                    <span key={`a${autresMises[c.cle].total}`} className="mises-autres" aria-hidden="true">
+                      {libelleJeton(autresMises[c.cle].total)}
+                    </span>
+                  ) : null}
                 </button>
               );
             })}

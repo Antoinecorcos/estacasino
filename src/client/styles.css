@@ -405,8 +405,9 @@ kbd { font: inherit; font-size: 11px; font-weight: 800; padding: 1px 6px; border
 .page-jeu .tapis.horizontal { grid-template-rows: repeat(3, 44px) 36px 36px; padding: 10px; }
 
 /* Le verdict et les totaux attendent que les cartes soient posées. */
-.message-table { animation-delay: 0.9s; }
-.pastille.differee { animation: apparition 0.3s ease 0.6s both; }
+.message-table { animation-delay: 0.15s; }
+.pastille.apparait { animation: apparition 0.3s ease both; }
+.pastille.vide { visibility: hidden; }
 @media (max-height: 820px) and (min-width: 761px) {
   .page-jeu .tapis.horizontal { grid-template-rows: repeat(3, 36px) 28px 28px; }
   .page-jeu .cadre-roue { min-width: 210px; }
@@ -458,3 +459,71 @@ kbd { font: inherit; font-size: 11px; font-weight: 800; padding: 1px 6px; border
   .page-jeu .ecran-roulette .panneau-mises .stat { flex-direction: row; align-items: baseline; gap: 6px; }
   .page-jeu .ecran-roulette .panneau-mises .stat .surtitre { display: inline; font-size: 10px; letter-spacing: 0.12em; }
 }
+
+/* Mises des autres joueurs sur le tapis : jeton ivoire, en bas à gauche de la case. */
+.case-tapis .mises-autres { position: absolute; left: -6px; bottom: -8px; min-width: 24px; height: 22px; padding: 0 5px; border-radius: 999px; background: var(--ivoire); color: var(--encre); font-family: var(--texte); font-size: 9px; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 2px dashed var(--feutre); z-index: 2; animation: apparition 0.3s cubic-bezier(.2, 1.6, .4, 1) both; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
+
+/* Lobby : cartes de jeu équilibrées */
+.grille-jeux { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.boutons-jeu { display: flex; flex-direction: column; gap: 8px; }
+.prochainement { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.bientot-mini { padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; border-style: dashed; border-color: var(--ligne-2); background: var(--encre-2); }
+.bientot-mini .italique { font-size: 19px; color: var(--ivoire-2); }
+.bientot-mini .muet { font-size: 13px; }
+.code-saisie { width: 100%; }
+.code-saisie { letter-spacing: 0.22em; font-size: 24px; padding: 0 12px; }
+
+/* Défis du jour */
+.liste-defis { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.liste-defis li { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.liste-defis li.reclame { opacity: 0.55; }
+.defi-tete, .defi-pied { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.defi-tete .accent { font-size: 13px; font-weight: 700; white-space: nowrap; }
+.jauge { flex: 1; height: 6px; border-radius: 999px; background: var(--ligne-2); overflow: hidden; }
+.jauge i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width 0.5s ease; }
+
+/* Réactions rapides */
+.reactions { position: absolute; z-index: 4; }
+.reactions-table { left: 10px; bottom: 10px; }
+.reactions-roue { left: 10px; top: 10px; }
+.bouton-reactions { background: rgba(11, 13, 14, 0.75); color: var(--ivoire-2); }
+.menu-reactions { position: absolute; bottom: 46px; left: 0; display: grid; grid-template-columns: repeat(2, max-content); gap: 6px; padding: 8px; border-radius: 14px; background: var(--ardoise-2); border: 1px solid var(--ligne-2); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55); animation: apparition 0.2s ease both; }
+.reactions-roue .menu-reactions { bottom: auto; top: 46px; }
+.menu-reactions button { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--ligne-2); background: var(--encre); color: var(--ivoire); font-family: var(--titre); font-style: italic; font-size: 15px; }
+.menu-reactions button:hover { border-color: var(--accent); color: var(--accent-clair); }
+.plaque { position: relative; }
+.bulle-reaction { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); white-space: nowrap; padding: 5px 12px; border-radius: 14px; background: var(--ivoire); color: var(--encre); font-family: var(--titre); font-style: italic; font-size: 15px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5); pointer-events: none; z-index: 5; animation: bulle 2.8s ease both; }
+.bulle-reaction::after { content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--ivoire); }
+.bulle-reaction b { font-family: var(--texte); font-style: normal; font-size: 12px; }
+@keyframes bulle { 0% { opacity: 0; transform: translate(-50%, 6px) scale(0.8); } 10% { opacity: 1; transform: translate(-50%, 0) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -8px); } }
+.panneau-roue { position: relative; }
+.pile-reactions { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; z-index: 4; pointer-events: none; }
+.pile-reactions .bulle-reaction { position: static; transform: none; animation-name: bulle-pile; }
+.pile-reactions .bulle-reaction::after { display: none; }
+@keyframes bulle-pile { 0% { opacity: 0; transform: translateY(-6px); } 10% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; } }
+@media (max-width: 700px) {
+  .bulle-reaction { font-size: 13px; padding: 4px 9px; }
+  .reactions-table { left: 6px; bottom: 6px; }
+}
+
+/* Ligues */
+.badge-ligue { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 7px; border-radius: 999px; border: 1px solid; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; background: rgba(0, 0, 0, 0.25); }
+.badge-ligue.compact { padding: 3px 5px; }
+.progression-ligue { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; }
+
+/* Graphique de saison */
+.chiffre-cle { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.chiffre-cle b { font-size: 30px; font-weight: 800; }
+.chiffre-cle .muet { font-size: 13px; }
+.graphique { position: relative; width: 100%; }
+.graphique svg { display: block; overflow: visible; touch-action: pan-y; }
+.graphique .grille { stroke: var(--ligne); stroke-width: 1; }
+.graphique .axe-zero { stroke: var(--muet); stroke-width: 1; stroke-dasharray: 4 4; }
+.graphique .reticule { stroke: var(--ivoire-2); stroke-width: 1; stroke-dasharray: 3 3; }
+.graphique .etiquette-axe { fill: var(--muet); font-size: 11px; font-family: var(--texte); font-variant-numeric: tabular-nums; }
+.infobulle { position: absolute; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 10px; border-radius: 10px; background: var(--ardoise-2); border: 1px solid var(--ligne-2); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5); font-size: 12px; pointer-events: none; white-space: nowrap; }
+.infobulle b { font-size: 15px; color: var(--ivoire); }
+.vue-tableau summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+.vue-tableau .tableau td, .vue-tableau .tableau th { font-size: 13px; padding: 6px 10px; }
+.lien-discret { display: inline-block; margin-top: 6px; font-size: 12px; }
+@media (max-width: 760px) { .soldes { gap: 8px; } .bouton-icone { width: 34px; height: 34px; } }

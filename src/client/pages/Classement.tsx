@@ -3,13 +3,14 @@ import type { ConfigAvatar } from "../../shared/avatar";
 import { formatJetons } from "../../shared/regles";
 import { api } from "../api";
 import { Avatar } from "../components/Avatar";
+import { BadgeLigue } from "../components/Ligue";
 import { Page } from "../components/Elements";
 import { useSession } from "../session";
 
 interface Reponse {
   saison: { nom: string; debut: number; fin: number } | null;
   minParties: number;
-  lignes: { rang: number; pseudo: string; avatar: ConfigAvatar; gains: number; parties: number }[];
+  lignes: { rang: number; pseudo: string; avatar: ConfigAvatar; gains: number; parties: number; ligue: string | null }[];
 }
 
 const ONGLETS = [
@@ -75,6 +76,7 @@ export function Classement() {
                       <div className="rangee" style={{ gap: 10, flexWrap: "nowrap" }}>
                         <Avatar config={l.avatar} taille={36} />
                         <strong>{l.pseudo}</strong>
+                        {l.ligue && <BadgeLigue id={l.ligue} />}
                       </div>
                     </td>
                     <td className="num" style={{ textAlign: "right", fontWeight: 700, color: l.gains >= 0 ? "var(--accent)" : "var(--carmin-clair)" }}>

@@ -67,7 +67,7 @@ Calcul pour un acheteur en France (TVA 20 %) et une carte européenne standard (
 
 | Produit | Prix TTC | Dont TVA | HT | Frais Stripe | Net estimé |
 |---|---|---|---|---|---|
-| Accessoire (6 au catalogue) | 1,99 € | 0,33 € | 1,66 € | ≈ 0,29 € | ≈ 1,37 € |
+| Accessoire (6 au catalogue) | 0,99 € | 0,17 € | 0,82 € | ≈ 0,27 € | ≈ 0,55 € |
 | Avatar premium (4 au catalogue) | 2,99 € | 0,50 € | 2,49 € | ≈ 0,31 € | ≈ 2,18 € |
 | Collection Salon privé (les 4 avatars) | 8,99 € | 1,50 € | 7,49 € | ≈ 0,43 € | ≈ 7,06 € |
 

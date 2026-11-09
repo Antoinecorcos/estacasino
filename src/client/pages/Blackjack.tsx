@@ -5,13 +5,15 @@ import type { BjAction, BjEtat, BjJoueur, BjMain, BjMessageClient } from "../../
 import { formatJetons } from "../../shared/regles";
 import { trouverTheme } from "../../shared/themes";
 import { Avatar } from "../components/Avatar";
+import { useAnnonceDefi } from "../components/Defis";
+import { BoutonReactions, BulleReaction } from "../components/Reactions";
 import { Carte, Compteur, Jeton, VALEURS_JETONS } from "../components/Elements";
 import { celebrer, secouer, volerJeton } from "../fx/effets";
 import { sons } from "../fx/sons";
 import { useSession } from "../session";
 import { useThemeRoom } from "../theme";
 import { creerTable3D, type Table3D } from "../trois/table";
-import { useCompteARebours, useEtroit, useRoom } from "../useRoom";
+import { type Reaction, useCompteARebours, useEtroit, useRoom } from "../useRoom";
 import { BarreRoom } from "./Room";
 
 const LIBELLES_ISSUE = { blackjack: "Blackjack", gagne: "Gagné", egalite: "Égalité", perdu: "Perdu", bust: "Bust" } as const;
@@ -42,6 +44,42 @@ function totalAffiche(cartes: (TCarte | null)[]): string {
   return String(v.total);
 }
 
+// Rythme d'arrivée des cartes (identique à la table 3D) : une carte ne « compte » qu'une fois posée.
+const ECART_DONNE_MS = 520;
+const POSE_MS = 900; // vol depuis le sabot + retournement
+const RETOURNE_MS = 500; // carte cachée du croupier qui se retourne
+
+interface CarteSuivie {
+  cle: string;
+  ordre: number;
+  revelation: boolean;
+}
+
+/** Retourne une fonction « est posée » par clé de carte, et vrai quand toutes les cartes sont posées. */
+function useCartesPosees(cartes: CarteSuivie[]): { posee: (cle: string) => boolean; toutPose: boolean } {
+  const poses = useRef(new Map<string, number>());
+  const [, rafraichir] = useState(0);
+  const now = Date.now();
+  const nouvelles = cartes.filter((c) => !poses.current.has(c.cle)).sort((a, b) => a.ordre - b.ordre);
+  nouvelles.forEach((c, i) => {
+    const delai = c.revelation ? RETOURNE_MS : nouvelles.length > 1 ? i * ECART_DONNE_MS + POSE_MS : POSE_MS;
+    poses.current.set(c.cle, now + delai);
+  });
+  const prochaine = Math.min(...cartes.map((c) => poses.current.get(c.cle)!).filter((t) => t > now));
+  useEffect(() => {
+    if (!Number.isFinite(prochaine)) return;
+    const t = setTimeout(() => rafraichir((x) => x + 1), prochaine - Date.now() + 16);
+    return () => clearTimeout(t);
+  }, [prochaine]);
+  return {
+    posee: (cle) => (poses.current.get(cle) ?? Infinity) <= Date.now(),
+    toutPose: !Number.isFinite(prochaine),
+  };
+}
+
+const cleCarteJoueur = (donne: number, joueurId: string, main: number, k: number, c: TCarte) => `${donne}-${joueurId}-${main}-${k}-${c.r}${c.c}`;
+const cleCarteCroupier = (donne: number, i: number, c: TCarte | null) => `${donne}-c-${i}-${c ? c.r + c.c : "x"}`;
+
 function AncreCarte({ carte, ordre, surbrillance }: { carte: TCarte | null; ordre: number; surbrillance?: boolean }) {
   return (
     <div
@@ -60,36 +98,43 @@ function miseMain(j: BjJoueur): number {
 }
 
 function Siege({
-  j, etat, moi, rang, nbJoueurs, pos, miseLocale,
+  j, etat, moi, rang, nbJoueurs, pos, miseLocale, posee, toutPose, reaction,
 }: {
   j: BjJoueur; etat: BjEtat; moi: string | null; rang: number; nbJoueurs: number; pos: { x: number; y: number }; miseLocale: number;
+  posee: (cle: string) => boolean; toutPose: boolean; reaction?: Reaction;
 }) {
   const estMoi = j.id === moi;
   const actif = etat.tour?.joueurId === j.id;
   const enMises = etat.phase === "attente" || etat.phase === "mises";
   const pile = enMises ? (estMoi ? miseLocale || j.mise : j.mise) : miseMain(j);
-  const fini = j.mains.length > 0 && j.mains.every((m) => m.issue);
+  const fini = toutPose && j.mains.length > 0 && j.mains.every((m) => m.issue);
   return (
     <div className={`siege${actif ? " actif" : ""}${estMoi ? " moi" : ""}`} style={{ left: `${pos.x}%`, top: `${pos.y}%` }} data-siege={j.id}>
       <div className="siege-mains">
-        {j.mains.map((m, i) => (
-          <div key={i} className={`siege-main${m.issue === "bust" || m.issue === "perdu" ? " perdue" : ""}${m.issue === "gagne" || m.issue === "blackjack" ? " gagnee" : ""}`}>
-            <span key={`${m.cartes.length}-${m.issue ?? ""}`} className={`pastille differee${actif && etat.tour?.main === i ? " tour" : ""}${m.issue ? ` ${m.issue}` : ""}`}>
-              {m.issue ? LIBELLES_ISSUE[m.issue] : totalAffiche(m.cartes)}
-              {m.issue && m.rendu && m.rendu > m.mise ? ` +${formatJetons(m.rendu - m.mise)}` : ""}
-            </span>
-            <div className="rang-cartes">
-              {m.cartes.map((c, k) => (
-                <AncreCarte key={`${etat.donne}-${i}-${k}-${c.r}${c.c}`} carte={c} ordre={k * (nbJoueurs + 1) + rang} surbrillance={actif && etat.tour?.main === i} />
-              ))}
+        {j.mains.map((m, i) => {
+          const visibles = m.cartes.filter((c, k) => posee(cleCarteJoueur(etat.donne, j.id, i, k, c)));
+          const issue = toutPose ? m.issue : undefined;
+          const total = totalAffiche(visibles);
+          return (
+            <div key={i} className={`siege-main${issue === "bust" || issue === "perdu" ? " perdue" : ""}${issue === "gagne" || issue === "blackjack" ? " gagnee" : ""}`}>
+              <span key={`${visibles.length}-${issue ?? ""}`} className={`pastille apparait${actif && etat.tour?.main === i ? " tour" : ""}${issue ? ` ${issue}` : ""}${!issue && !total ? " vide" : ""}`}>
+                {issue ? LIBELLES_ISSUE[issue] : total || "\u00a0"}
+                {issue && m.rendu && m.rendu > m.mise ? ` +${formatJetons(m.rendu - m.mise)}` : ""}
+              </span>
+              <div className="rang-cartes">
+                {m.cartes.map((c, k) => (
+                  <AncreCarte key={`${etat.donne}-${i}-${k}-${c.r}${c.c}`} carte={c} ordre={k * (nbJoueurs + 1) + rang} surbrillance={actif && etat.tour?.main === i} />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className="siege-pile" data-pile="" data-montant={fini ? 0 : pile}>
         {pile > 0 && !fini && <span className="pile-2d num">{formatJetons(pile)}</span>}
       </div>
       <div className="plaque">
+        {reaction && <BulleReaction key={reaction.id} reaction={reaction} />}
         <Avatar config={j.avatar} taille={34} />
         <div className="plaque-texte">
           <span className="pseudo">{estMoi ? "Vous" : j.pseudo}</span>
@@ -102,7 +147,8 @@ function Siege({
 
 export function TableBlackjack({ chemin }: { chemin: string }) {
   const { moi: profil, majSolde, notifier, rafraichir } = useSession();
-  const { etat, moi, statut, envoyer } = useRoom<BjEtat, BjMessageClient>(chemin, (m) => notifier(m, true));
+  const annoncerDefi = useAnnonceDefi();
+  const { etat, moi, statut, envoyer, reactions, reagir } = useRoom<BjEtat, BjMessageClient>(chemin, (m) => notifier(m, true), annoncerDefi);
   const [jeton, setJeton] = useState<number>(100);
   const [mise, setMise] = useState(0);
   const precedente = useRef(0);
@@ -110,7 +156,6 @@ export function TableBlackjack({ chemin }: { chemin: string }) {
   const hote = useRef<HTMLDivElement>(null);
   const table3d = useRef<Table3D | null>(null);
   const celebree = useRef<string>("");
-  const [distribution, setDistribution] = useState(false);
   const etroit = useEtroit();
   const theme = trouverTheme(etat?.theme ?? profil?.theme);
   useThemeRoom(etat?.theme, profil?.theme);
@@ -119,6 +164,19 @@ export function TableBlackjack({ chemin }: { chemin: string }) {
   useEffect(() => {
     if (moiJoueur) majSolde(moiJoueur.solde);
   }, [moiJoueur?.solde, majSolde]);
+
+  // Cartes suivies, dans l'ordre de distribution : rien n'est révélé avant que la carte soit posée.
+  const nbJ = etat?.joueurs.length ?? 0;
+  const rangs = new Map([...(etat?.joueurs ?? [])].sort((a, b) => a.place - b.place).map((j, r) => [j.id, r]));
+  const suivies: CarteSuivie[] = etat
+    ? [
+        ...etat.joueurs.flatMap((j) =>
+          j.mains.flatMap((m, i) => m.cartes.map((c, k) => ({ cle: cleCarteJoueur(etat.donne, j.id, i, k, c), ordre: k * (nbJ + 1) + (rangs.get(j.id) ?? 0), revelation: false }))),
+        ),
+        ...etat.croupier.map((c, i) => ({ cle: cleCarteCroupier(etat.donne, i, c), ordre: i * (nbJ + 1) + nbJ, revelation: i === 1 && c !== null })),
+      ]
+    : [];
+  const { posee, toutPose } = useCartesPosees(suivies);
 
   // Table 3D : créée une fois l'état reçu, synchronisée après chaque rendu.
   const pret = !!etat;
@@ -145,7 +203,7 @@ export function TableBlackjack({ chemin }: { chemin: string }) {
 
   // Fin de donne : célébration ou déception, puis mise à jour des gains de saison.
   useEffect(() => {
-    if (!moiJoueur || moiJoueur.mains.length === 0 || !moiJoueur.mains.every((m) => m.issue)) return;
+    if (!toutPose || !moiJoueur || moiJoueur.mains.length === 0 || !moiJoueur.mains.every((m) => m.issue)) return;
     const signature = moiJoueur.mains.map((m) => m.cartes.map((c) => c.r + c.c).join("")).join("|");
     if (celebree.current === signature) return;
     celebree.current = signature;
@@ -164,19 +222,12 @@ export function TableBlackjack({ chemin }: { chemin: string }) {
         void volerJeton(siege, ".zone-croupier", { valeur: 100, duree: 420 });
       } else sons.egalite();
       void rafraichir();
-    }, 1200);
+    }, 350);
     return () => clearTimeout(t);
-  }, [moiJoueur, rafraichir]);
+  }, [moiJoueur, rafraichir, toutPose]);
 
-  // Distribution : le temps que toutes les cartes arrivent du sabot, les actions attendent.
-  const donne = etat?.donne ?? 0;
-  const nbCartesDonne = etat ? 2 * (etat.joueurs.filter((j) => j.mains.length > 0).length + 1) : 0;
-  useEffect(() => {
-    if (!donne) return;
-    setDistribution(true);
-    const t = setTimeout(() => setDistribution(false), nbCartesDonne * 520 + 750);
-    return () => clearTimeout(t);
-  }, [donne]);
+  // Tant que des cartes sont en vol, les actions attendent (comme au casino).
+  const distribution = !toutPose;
 
   const enMises = etat?.phase === "attente" || etat?.phase === "mises";
   const monTour = !!etat && etat.tour?.joueurId === moi && etat.phase === "jeu" && !distribution;
@@ -218,7 +269,7 @@ export function TableBlackjack({ chemin }: { chemin: string }) {
   const disponible = (moiJoueur?.solde ?? 0) + miseServeur;
   const nb = etat.joueurs.length;
   const ordreCroupier = nb; // le croupier reçoit sa carte après les joueurs, à chaque tour
-  const resultatMoi = moiJoueur && moiJoueur.mains.length > 0 && moiJoueur.mains.every((m) => m.issue) ? moiJoueur.mains : null;
+  const resultatMoi = toutPose && moiJoueur && moiJoueur.mains.length > 0 && moiJoueur.mains.every((m) => m.issue) ? moiJoueur.mains : null;
   const net = resultatMoi ? resultatMoi.reduce((a, m) => a + (m.rendu ?? 0) - m.mise, 0) : 0;
   const message = resultatMoi
     ? resultatMoi.some((m) => m.issue === "blackjack")
@@ -228,9 +279,7 @@ export function TableBlackjack({ chemin }: { chemin: string }) {
         : net < 0
           ? { texte: resultatMoi.every((m) => m.issue === "bust") ? "Bust" : "Perdu", classe: "perte" }
           : { texte: "Égalité", classe: "" }
-    : etat.phase === "croupier"
-      ? { texte: "Le croupier joue…", classe: "" }
-      : null;
+    : null;
 
   const ajouter = (v: number, depuis: Element | null) => {
     if (!enMises || !moiJoueur) return;
@@ -276,7 +325,11 @@ export function TableBlackjack({ chemin }: { chemin: string }) {
               ))}
             </div>
             <div className="etiquette-table">
-              Croupier{etat.croupier.length ? ` · ${totalAffiche(etat.croupier)}` : ""}
+              Croupier
+              {(() => {
+                const t = totalAffiche(etat.croupier.filter((c, i) => posee(cleCarteCroupier(etat.donne, i, c))));
+                return t ? ` · ${t}` : "";
+              })()}
             </div>
           </div>
           {message && (
@@ -294,8 +347,12 @@ export function TableBlackjack({ chemin }: { chemin: string }) {
               nbJoueurs={nb}
               pos={places[etat.solo ? 0 : j.place] ?? PLACE_SOLO}
               miseLocale={j.id === moi ? mise : 0}
+              posee={posee}
+              toutPose={toutPose}
+              reaction={reactions.find((r) => r.joueurId === j.id)}
             />
           ))}
+          {!etat.solo && moiJoueur && <BoutonReactions reagir={reagir} className="reactions-table" />}
         </div>
         <div className="remarque" aria-live="polite">{etat.remarque ?? ""}</div>
 

@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import type { ConfigAvatar } from "../../shared/avatar";
-import type { MessageServeur } from "../../shared/protocole";
+import { type MessageCommun, type MessageServeur, REACTIONS } from "../../shared/protocole";
 import { type Jeu, ROOM_VIDE_FERMETURE_MS } from "../../shared/regles";
 import { crediter, lireSolde } from "../economie";
 import type { Env } from "../env";
@@ -122,6 +122,10 @@ export abstract class RoomBase<Etat, MessageClient> extends DurableObject<Env> {
       } catch {
         return;
       }
+      if ((msg as unknown as MessageCommun).t === "reaction") {
+        this.reagir(ident.id, (msg as unknown as MessageCommun).r);
+        return;
+      }
       this.enFile(async () => {
         try {
           await this.surMessage(ident.id, msg);
@@ -217,6 +221,49 @@ export abstract class RoomBase<Etat, MessageClient> extends DurableObject<Env> {
     } catch {
       /* ignoré */
     }
+  }
+
+  private derniereReaction = new Map<string, number>();
+
+  /** Réaction rapide : relayée à toute la room, au plus une toutes les 1,5 s par joueur. */
+  private reagir(id: string, r: number): void {
+    if (this.config?.solo || !Number.isInteger(r) || r < 0 || r >= REACTIONS.length) return;
+    const now = Date.now();
+    if (now - (this.derniereReaction.get(id) ?? 0) < 1500) return;
+    this.derniereReaction.set(id, now);
+    const pseudo = this.pseudoDe(id);
+    if (!pseudo) return;
+    this.envoyerTous({ t: "reaction", joueurId: id, pseudo, r });
+  }
+
+  /** Pseudo d'un joueur assis (pour les réactions) ; null pour un spectateur. */
+  protected abstract pseudoDe(id: string): string | null;
+
+  protected envoyerA(id: string, msg: MessageServeur<Etat>): void {
+    for (const [ws, v] of this.sockets) {
+      if (v !== id) continue;
+      try {
+        ws.send(JSON.stringify(msg));
+      } catch {
+        /* connexion fermée */
+      }
+    }
+  }
+
+  protected envoyerTous(msg: MessageServeur<Etat>): void {
+    const texte = JSON.stringify(msg);
+    for (const ws of this.sockets.keys()) {
+      try {
+        ws.send(texte);
+      } catch {
+        /* connexion fermée */
+      }
+    }
+  }
+
+  /** Prévient un joueur des défis qu'il vient de réussir. */
+  protected annoncerDefis(id: string, reussis: { titre: string; recompense: number }[]): void {
+    for (const d of reussis) this.envoyerA(id, { t: "defi", ...d });
   }
 
   /** Envoie une erreur à toutes les connexions d'un joueur. */

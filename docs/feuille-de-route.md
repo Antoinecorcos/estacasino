@@ -77,3 +77,21 @@ Objectif : pouvoir ouvrir à 10-30 amis sans risque de perdre des jetons, d'êtr
 - Discussion libre en room, ou uniquement des réactions rapides ?
 - Poker en V1 ou en V1.1 ?
 - Date visée pour la bêta privée et pour le lancement.
+
+---
+
+## Avancement de l'étape 4 (version 0.4)
+
+| | Tâche |
+|---|---|
+| ✅ | Défis quotidiens : 3 par jour (un de blackjack, un de roulette, un au choix), récompenses en jetons à récupérer au lobby, notification en jeu |
+| ✅ | Ligues Bronze → Légende (gains de saison) ; limites de mise des rooms : Bronze 5 000, Argent 10 000, Or et plus 25 000 |
+| ✅ | Réactions rapides en room (6 phrases, bouton discret, anti-spam) |
+| ✅ | Musique d'ambiance jazz lounge générée en direct (coupée par défaut) |
+| ✅ | Historique de la saison en graphique (profil) |
+| ⏸ | Fin de saison : après la finalisation du jeu |
+| ⏸ | Boutique tournante : pas pour l'instant |
+| ⏭ | Prochaine étape : poker Texas Hold'em et machine à sous |
+
+Points du brouillon traités : totaux du blackjack révélés seulement une fois les cartes posées, accessoires à 0,99 €, mises des autres joueurs visibles sur le tapis de roulette, lobby rééquilibré et sans défilement latéral, graphique de saison.
+Points du brouillon en attente de décision : options payantes de jetons de secours (2,99 € et 6,99 €).

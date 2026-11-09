@@ -90,3 +90,26 @@ describe("pseudos", async () => {
     expect(verifierPseudo("avec espace").ok).toBe(false);
   });
 });
+
+describe("ligues et défis", async () => {
+  const { ligueDe, ligueSuivante } = await import("./ligues");
+  const { defisDuJour } = await import("./defis");
+  it("attribue la ligue selon les gains de saison", () => {
+    expect(ligueDe(50_000, 2, null).id).toBe("bronze"); // pas assez de parties
+    expect(ligueDe(-3_000, 40, 50).id).toBe("bronze");
+    expect(ligueDe(5_000, 40, 50).id).toBe("argent");
+    expect(ligueDe(39_999, 40, 9).id).toBe("or");
+    expect(ligueDe(120_000, 40, 30).id).toBe("diamant");
+    expect(ligueDe(120_000, 40, 3).id).toBe("legende");
+    expect(ligueSuivante(ligueDe(0, 40, 50))?.id).toBe("argent");
+    expect(ligueSuivante(ligueDe(120_000, 40, 30))).toBeNull();
+  });
+  it("donne 3 défis stables par jour, dont un de blackjack et un de roulette", () => {
+    const a = defisDuJour("joueur-1", "2026-11-09");
+    expect(a).toHaveLength(3);
+    expect(new Set(a.map((d) => d.id)).size).toBe(3);
+    expect(a.some((d) => d.jeu === "blackjack")).toBe(true);
+    expect(a.some((d) => d.jeu === "roulette")).toBe(true);
+    expect(defisDuJour("joueur-1", "2026-11-09")).toEqual(a);
+  });
+});

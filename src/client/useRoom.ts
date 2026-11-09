@@ -3,9 +3,23 @@ import type { MessageServeur } from "../shared/protocole";
 
 export type StatutConnexion = "connexion" | "ouvert" | "perdu";
 
+export interface Reaction {
+  id: number;
+  joueurId: string;
+  pseudo: string;
+  r: number;
+}
+
 /** Connexion WebSocket à une room, avec reconnexion automatique. */
-export function useRoom<Etat, MessageClient>(chemin: string | null, surErreur: (message: string) => void) {
+export function useRoom<Etat, MessageClient>(
+  chemin: string | null,
+  surErreur: (message: string) => void,
+  surDefi?: (titre: string, recompense: number) => void,
+) {
   const [etat, setEtat] = useState<Etat | null>(null);
+  const [reactions, setReactions] = useState<Reaction[]>([]);
+  const defiRef = useRef(surDefi);
+  defiRef.current = surDefi;
   const [moi, setMoi] = useState<string | null>(null);
   const [statut, setStatut] = useState<StatutConnexion>("connexion");
   const ws = useRef<WebSocket | null>(null);
@@ -32,7 +46,13 @@ export function useRoom<Etat, MessageClient>(chemin: string | null, surErreur: (
         if (msg.t === "etat") {
           setEtat(msg.etat);
           setMoi(msg.moi);
-        } else erreurRef.current(msg.message);
+        } else if (msg.t === "erreur") erreurRef.current(msg.message);
+        else if (msg.t === "defi") defiRef.current?.(msg.titre, msg.recompense);
+        else if (msg.t === "reaction") {
+          const r: Reaction = { id: Date.now() + Math.random(), joueurId: msg.joueurId, pseudo: msg.pseudo, r: msg.r };
+          setReactions((l) => [...l.filter((x) => x.joueurId !== r.joueurId), r]);
+          setTimeout(() => setReactions((l) => l.filter((x) => x.id !== r.id)), 2800);
+        }
       };
       s.onclose = () => {
         if (ferme) return;
@@ -50,11 +70,15 @@ export function useRoom<Etat, MessageClient>(chemin: string | null, surErreur: (
     };
   }, [chemin]);
 
+  const reagir = useCallback((r: number) => {
+    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ t: "reaction", r }));
+  }, []);
+
   const envoyer = useCallback((msg: MessageClient) => {
     if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify(msg));
   }, []);
 
-  return { etat, moi, statut, envoyer };
+  return { etat, moi, statut, envoyer, reactions, reagir };
 }
 
 /** Secondes restantes avant une échéance (mise à jour 4 fois par seconde). */

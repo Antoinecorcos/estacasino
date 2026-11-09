@@ -1,6 +1,7 @@
 import { Hono, type Context } from "hono";
 import { AVATARS_DEPART, lireAvatar, validerAvatar } from "../shared/avatar";
 import { PRODUITS, trouverProduit } from "../shared/boutique";
+import { LIGUES, ligueDe, ligueSuivante } from "../shared/ligues";
 import { verifierPseudo } from "../shared/pseudo";
 import {
   ALPHABET_CODE,
@@ -29,6 +30,7 @@ import { themeAccessible, trouverTheme } from "../shared/themes";
 import { creerSessionCheckout, type SessionCheckoutTerminee, verifierSignatureWebhook } from "./stripe";
 
 import { admin } from "./admin";
+import { lireDefis } from "./defis";
 
 export { BlackjackRoom } from "./rooms/blackjack";
 export { RouletteRoom } from "./rooms/roulette";
@@ -207,6 +209,7 @@ app.post("/moi/supprimer", async (c) => {
     db.prepare("DELETE FROM stats_saison WHERE joueur_id = ?").bind(moi.id),
     db.prepare("DELETE FROM transactions_jetons WHERE joueur_id = ?").bind(moi.id),
     db.prepare("DELETE FROM inventaire WHERE joueur_id = ?").bind(moi.id),
+    db.prepare("DELETE FROM defis_jour WHERE joueur_id = ?").bind(moi.id),
     db.prepare("UPDATE rooms SET ouverte = 0 WHERE hote_id = ?").bind(moi.id),
   ]);
   await fermerSession(c);
@@ -227,23 +230,36 @@ function montantBonus(serie: number): number {
   return BONUS_QUOTIDIEN + Math.min(BONUS_SERIE_PAR_JOUR * (serie - 1), BONUS_SERIE_MAX);
 }
 
+/** Gains, parties, rang et ligue du joueur pour la saison en cours. */
+async function situationSaison(db: D1Database, joueurId: string) {
+  const saison = await saisonCourante(db);
+  const stats = saison
+    ? await db.prepare("SELECT gains_nets, mains FROM stats_saison WHERE joueur_id = ? AND saison_id = ?").bind(joueurId, saison.id).first<{ gains_nets: number; mains: number }>()
+    : null;
+  let rang: number | null = null;
+  if (saison && stats && stats.mains >= CLASSEMENT_MIN_PARTIES) {
+    const r = await db
+      .prepare(
+        `SELECT COUNT(*) + 1 AS rang FROM stats_saison s JOIN joueurs j ON j.id = s.joueur_id
+         WHERE s.saison_id = ? AND s.mains >= ? AND s.gains_nets > ? AND j.suspendu = 0 AND j.supprime_le IS NULL`,
+      )
+      .bind(saison.id, CLASSEMENT_MIN_PARTIES, stats.gains_nets)
+      .first<{ rang: number }>();
+    rang = r?.rang ?? null;
+  }
+  const gains = stats?.gains_nets ?? 0;
+  const parties = stats?.mains ?? 0;
+  return { saison, gains, parties, rang, ligue: ligueDe(gains, parties, rang) };
+}
+
 app.get("/moi", async (c) => {
   const moi = await exigerJoueur(c);
   if (moi instanceof Response) return moi;
   const j = await c.env.DB.prepare("SELECT bonus_dernier, bonus_serie, filet_dernier, theme FROM joueurs WHERE id = ?")
     .bind(moi.id)
     .first<{ bonus_dernier: string | null; bonus_serie: number; filet_dernier: number | null; theme: string }>();
-  const saison = await saisonCourante(c.env.DB);
-  const stats = saison
-    ? await c.env.DB.prepare("SELECT gains_nets, mains FROM stats_saison WHERE joueur_id = ? AND saison_id = ?").bind(moi.id, saison.id).first<{ gains_nets: number; mains: number }>()
-    : null;
-  let rang: number | null = null;
-  if (saison && stats && stats.mains >= CLASSEMENT_MIN_PARTIES) {
-    const r = await c.env.DB.prepare("SELECT COUNT(*) + 1 AS rang FROM stats_saison WHERE saison_id = ? AND mains >= ? AND gains_nets > ?")
-      .bind(saison.id, CLASSEMENT_MIN_PARTIES, stats.gains_nets)
-      .first<{ rang: number }>();
-    rang = r?.rang ?? null;
-  }
+  const { saison, gains, parties, rang, ligue } = await situationSaison(c.env.DB, moi.id);
+  const suivante = ligueSuivante(ligue);
   const inventaire = await c.env.DB.prepare("SELECT piece FROM inventaire WHERE joueur_id = ?").bind(moi.id).all<{ piece: string }>();
 
   const aujourdHui = jourParis();
@@ -258,7 +274,8 @@ app.get("/moi", async (c) => {
     role: moi.role,
     theme: trouverTheme(moi.theme).id,
     inventaire: inventaire.results.map((x) => x.piece),
-    saison: saison ? { nom: saison.nom, fin: saison.fin, gains: stats?.gains_nets ?? 0, parties: stats?.mains ?? 0, rang, minParties: CLASSEMENT_MIN_PARTIES } : null,
+    saison: saison ? { nom: saison.nom, fin: saison.fin, gains, parties, rang, minParties: CLASSEMENT_MIN_PARTIES } : null,
+    ligue: { id: ligue.id, nom: ligue.nom, suivante: suivante ? { id: suivante.id, nom: suivante.nom, seuil: suivante.seuil } : null },
     bonus: { disponible: bonusDispo, montant: montantBonus(serieSuivante), serie: bonusDispo ? serieSuivante : (j?.bonus_serie ?? 1) },
     filet: { seuil: FILET_SEUIL, montant: FILET_MONTANT, disponible: moi.solde < FILET_SEUIL && Date.now() >= filetProchain, prochain: filetProchain },
   });
@@ -315,6 +332,56 @@ app.put("/moi/theme", async (c) => {
   return c.json({ ok: true, theme: b.theme });
 });
 
+/**
+ * Historique de la saison : solde et gains nets après chaque mouvement de jetons,
+ * réduit à 240 points au plus (le dernier point de chaque tranche est gardé).
+ */
+app.get("/moi/historique", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  const saison = await saisonCourante(c.env.DB);
+  if (!saison) return c.json({ saison: null, points: [] });
+  const r = await c.env.DB.prepare("SELECT montant, type, le FROM transactions_jetons WHERE joueur_id = ? AND le >= ? ORDER BY le, id")
+    .bind(moi.id, saison.debut)
+    .all<{ montant: number; type: string; le: number }>();
+  // Le capital de départ n'est pas un mouvement de jeu : la courbe commence juste après.
+  const tx = r.results[0]?.type === "depart" ? r.results.slice(1) : r.results;
+  let solde = moi.solde - tx.reduce((a, t) => a + t.montant, 0);
+  let gains = 0;
+  const debut = Math.max(saison.debut, (tx[0]?.le ?? Date.now()) - 1);
+  const points = [{ t: debut, solde, gains }];
+  for (const t of tx) {
+    solde += t.montant;
+    if (t.type === "mise" || t.type === "gain" || t.type === "remboursement") gains += t.montant;
+    points.push({ t: t.le, solde, gains });
+  }
+  const MAX = 240;
+  const reduits = points.length <= MAX ? points : points.filter((_, i) => i === 0 || i === points.length - 1 || Math.floor((i * MAX) / points.length) !== Math.floor(((i + 1) * MAX) / points.length));
+  return c.json({ saison: { nom: saison.nom, debut: saison.debut }, points: reduits });
+});
+
+// ───────────── Défis quotidiens ─────────────
+
+app.get("/defis", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  return c.json({ defis: await lireDefis(c.env.DB, moi.id) });
+});
+
+app.post("/defis/:defi/recuperer", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  const r = await c.env.DB.prepare(
+    `UPDATE defis_jour SET reclame = 1 WHERE joueur_id = ? AND jour = ? AND defi = ? AND reclame = 0 AND progression >= objectif
+     RETURNING recompense`,
+  )
+    .bind(moi.id, jourParis(), c.req.param("defi"))
+    .first<{ recompense: number }>();
+  if (!r) return erreur(c, "Ce défi n'est pas encore réussi, ou déjà récupéré.", 409);
+  const solde = await crediter(c.env.DB, moi.id, r.recompense, "defi", null, null);
+  return c.json({ ok: true, recompense: r.recompense, solde });
+});
+
 // ───────────── Classement ─────────────
 
 app.get("/classement", async (c) => {
@@ -334,7 +401,15 @@ app.get("/classement", async (c) => {
   return c.json({
     saison: { nom: saison.nom, debut: saison.debut, fin: saison.fin },
     minParties: CLASSEMENT_MIN_PARTIES,
-    lignes: lignes.results.map((l, i) => ({ rang: i + 1, pseudo: l.pseudo, avatar: lireAvatar(l.avatar), gains: l.gains, parties: l.parties })),
+    lignes: lignes.results.map((l, i) => ({
+      rang: i + 1,
+      pseudo: l.pseudo,
+      avatar: lireAvatar(l.avatar),
+      gains: l.gains,
+      parties: l.parties,
+      // La ligue se calcule sur le classement général (gains nets de la saison).
+      ligue: jeu === "blackjack" || jeu === "roulette" ? null : ligueDe(l.gains, l.parties, i + 1).id,
+    })),
   });
 });
 
@@ -350,6 +425,11 @@ app.post("/rooms", async (c) => {
   const max = Number(b.max ?? defaut.max);
   if (!(PALIERS_MISE_MIN as readonly number[]).includes(min) || !(PALIERS_MISE_MAX as readonly number[]).includes(max) || min > max)
     return erreur(c, "Limites de mise invalides.");
+  const { ligue } = await situationSaison(c.env.DB, moi.id);
+  if (max > ligue.miseMaxRoom) {
+    const requise = LIGUES.find((l) => l.miseMaxRoom >= max);
+    return erreur(c, `Une mise maximum de ${max.toLocaleString("fr-FR")} jetons se débloque en ligue ${requise?.nom ?? "supérieure"}.`, 403);
+  }
   for (let essai = 0; essai < 8; essai++) {
     const code = chaineAleatoire(ALPHABET_CODE, 5);
     const r = await c.env.DB.prepare(

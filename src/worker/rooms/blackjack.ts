@@ -14,6 +14,7 @@ import type { BjAction, BjEtat, BjJoueur, BjMain, BjMessageClient, BjPhase } fro
 import { BLACKJACK_PLACES, formatJetons } from "../../shared/regles";
 import { aleatoire } from "../crypto";
 import { crediter, debiter, enregistrerResultat } from "../economie";
+import { progresserDefis } from "../defis";
 import { auHasard, dormir, ErreurJeu, type Identite, RoomBase } from "./base";
 
 const DELAI_MISES_MS = 12_000; // room : temps laissé aux autres pour miser après la première mise
@@ -285,6 +286,7 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
   private async regler(): Promise<void> {
     this.annulerMinuteur();
     let bjJoueur: string | null = null;
+    const participants = this.ordre().length;
     let gagnants = 0;
     let perdants = 0;
     for (const j of this.ordre()) {
@@ -303,6 +305,7 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
         if (rendu === 0) perdants++;
       }
       await this.solderEnJeu(j.id);
+      await this.defisApresMain(j, participants);
     }
     if (!this.remarque || this.phase === "jeu" || this.phase === "croupier") {
       const vc = valeurMain(this.croupier).total;
@@ -318,6 +321,26 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
     // Les cartes restent visibles jusqu'à la donne suivante ; les absents quittent la table.
     for (const [id, j] of this.joueurs) if (!j.connecte) this.joueurs.delete(id);
     this.phase = "attente";
+  }
+
+  /** Défis quotidiens : une erreur ici ne doit jamais bloquer la table. */
+  private async defisApresMain(j: BjJoueur, participants: number): Promise<void> {
+    try {
+      const reussis = await progresserDefis(this.env.DB, j.id, {
+        main_bj: j.mains.length,
+        gain_bj: j.mains.filter((m) => (m.rendu ?? 0) > m.mise).length,
+        blackjack: j.mains.filter((m) => m.issue === "blackjack").length,
+        double_gagne: j.mains.filter((m) => m.doublee && (m.rendu ?? 0) > m.mise).length,
+        room: !this.config?.solo && participants >= 2 ? 1 : 0,
+      });
+      this.annoncerDefis(j.id, reussis);
+    } catch (e) {
+      console.error("défis", e);
+    }
+  }
+
+  protected pseudoDe(id: string): string | null {
+    return this.joueurs.get(id)?.pseudo ?? null;
   }
 
   // ───────── État public ─────────

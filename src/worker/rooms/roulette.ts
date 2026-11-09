@@ -3,6 +3,7 @@ import { definitionMise, rendreMise } from "../../shared/roulette";
 import { formatJetons, ROULETTE_PLACES } from "../../shared/regles";
 import { aleatoire } from "../crypto";
 import { crediter, debiter, enregistrerResultat } from "../economie";
+import { progresserDefis } from "../defis";
 import { auHasard, ErreurJeu, type Identite, RoomBase } from "./base";
 
 // Room et Grande Roue : cycle de 30 secondes (15 s de mises, 11 s de tirage animé, 4 s de résultats).
@@ -122,6 +123,7 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
   private async regler(): Promise<void> {
     const n = this.resultat!;
     let meilleur: { pseudo: string; gain: number } | null = null;
+    const miseurs = [...this.joueurs.values()].filter((x) => totalMises(x) > 0).length;
     for (const j of this.joueurs.values()) {
       const total = totalMises(j);
       if (total === 0) {
@@ -136,6 +138,7 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
       }
       await enregistrerResultat(this.env.DB, j.id, "roulette", total, rendu);
       await this.solderEnJeu(j.id);
+      await this.defisApresTour(j, n, total, rendu, miseurs);
       j.dernier = { mise: total, rendu };
       j.mises = {};
       if (rendu - total > 0 && (!meilleur || rendu - total > meilleur.gain)) meilleur = { pseudo: j.pseudo, gain: rendu - total };
@@ -158,6 +161,26 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
         this.echeance = null;
       }
     });
+  }
+
+  /** Défis quotidiens : une erreur ici ne doit jamais bloquer la roue. */
+  private async defisApresTour(j: RlJoueur, n: number, total: number, rendu: number, miseurs: number): Promise<void> {
+    try {
+      const reussis = await progresserDefis(this.env.DB, j.id, {
+        tour_rl: 1,
+        gain_rl: rendu > total ? 1 : 0,
+        plein_gagne: Object.keys(j.mises).some((c) => c.startsWith("plein:") && rendreMise(c, 1, n) > 0) ? 1 : 0,
+        rouge_gagne: j.mises["rouge"] && rendreMise("rouge", 1, n) > 0 ? 1 : 0,
+        room: this.config?.code && miseurs >= 2 ? 1 : 0,
+      });
+      this.annoncerDefis(j.id, reussis);
+    } catch (e) {
+      console.error("défis", e);
+    }
+  }
+
+  protected pseudoDe(id: string): string | null {
+    return this.joueurs.get(id)?.pseudo ?? null;
   }
 
   protected etat(): RlEtat {

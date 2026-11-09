@@ -27,7 +27,7 @@ const accessoire = (id: string, nom: string, description: string, apercu: Partia
   type: "accessoire",
   nom,
   description,
-  prixCentimes: 199,
+  prixCentimes: 99,
   pieces: [`accessoire:${id}`],
   apercu: { ...base, ...apercu, accessoire: id },
 });

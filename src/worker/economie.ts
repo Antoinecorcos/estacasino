@@ -3,7 +3,7 @@ import type { Jeu } from "../shared/regles";
 // Tous les mouvements de jetons passent par ici et sont inscrits dans `transactions_jetons`.
 // Rappel : aucune fonction de ce fichier n'est appelée par la boutique ou par Stripe.
 
-export type TypeTransaction = "depart" | "bonus" | "filet" | "mise" | "gain" | "remboursement";
+export type TypeTransaction = "depart" | "bonus" | "filet" | "mise" | "gain" | "remboursement" | "defi";
 
 /** Débite un joueur si son solde le permet. Retourne le nouveau solde, ou null si solde insuffisant. */
 export async function debiter(db: D1Database, joueurId: string, montant: number, jeu: Jeu, room: string | null): Promise<number | null> {

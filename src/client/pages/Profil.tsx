@@ -5,6 +5,7 @@ import { THEMES } from "../../shared/themes";
 import { api } from "../api";
 import { ApercuTheme } from "../components/ApercuTheme";
 import { Avatar } from "../components/Avatar";
+import { GraphiqueSaison } from "../components/GraphiqueSaison";
 import { Page } from "../components/Elements";
 import { Lien, naviguer } from "../router";
 import { useSession } from "../session";
@@ -77,6 +78,8 @@ export function Profil() {
           </div>
           <button type="button" className="btn btn-petit" onClick={() => void deconnexion()}>Se déconnecter</button>
         </div>
+
+        <GraphiqueSaison />
 
         <section className="carte-ui" style={{ padding: 24 }}>
           <div className="editeur">
