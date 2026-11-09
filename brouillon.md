@@ -1,2 +1,2 @@
 - blackjack score de cartes spoil car montré avant les cartes
-- 
+- passer les simples accessoirs de boutique à 0,99€
