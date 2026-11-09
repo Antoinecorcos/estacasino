@@ -1,1 +1,2 @@
-Code secret : FC54-3DZH-M7TQ-JB6M
+- blackjack score de cartes spoil car montré avant les cartes
+- 
