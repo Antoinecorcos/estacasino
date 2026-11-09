@@ -1,2 +1,3 @@
 - blackjack score de cartes spoil car montré avant les cartes
 - passer les simples accessoirs de boutique à 0,99€
+- en partie groupée on voit ^pas les mises de roulette des autres
