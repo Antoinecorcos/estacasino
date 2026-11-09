@@ -91,7 +91,17 @@ Objectif : pouvoir ouvrir à 10-30 amis sans risque de perdre des jetons, d'êtr
 | ✅ | Historique de la saison en graphique (profil) |
 | ⏸ | Fin de saison : après la finalisation du jeu |
 | ⏸ | Boutique tournante : pas pour l'instant |
-| ⏭ | Prochaine étape : poker Texas Hold'em et machine à sous |
+| ✅ | Poker Texas Hold'em (v0.5) |
+| ⏭ | Prochaine étape : machine à sous |
 
 Points du brouillon traités : totaux du blackjack révélés seulement une fois les cartes posées, accessoires à 0,99 €, mises des autres joueurs visibles sur le tapis de roulette, lobby rééquilibré et sans défilement latéral, graphique de saison.
 Points du brouillon en attente de décision : options payantes de jetons de secours (2,99 € et 6,99 €).
+
+## Poker (version 0.5)
+
+- Texas Hold'em sans limite, 2 à 6 joueurs humains (pas de robots).
+- **Partie libre** : tables publiques par niveau de blindes (10/20, 50/100, 250/500 en ligue Argent, 1 000/2 000 en ligue Or), cave de 40 à 100 grosses blindes, on repart avec son tapis.
+- **Sit & Go** : entrées 500, 2 000, 10 000 (ligue Argent) ; tapis de tournoi 1 500, blindes qui montent toutes les 4 minutes ; jusqu'à 3 joueurs le gagnant prend tout, au-delà 65 % / 35 %. Public : départ à 6 inscrits, ou à 3 après 90 s d'attente. Privé : l'hôte lance.
+- Rooms privées par code (partie libre ou Sit & Go), 20 s par décision + 30 s de réserve par main, aide « votre combinaison » désactivable, cartes des perdants cachées sauf s'ils choisissent de les montrer.
+- Classement poker à part (onglet « Poker »), sans effet sur le classement général.
+- Jetons en jeu protégés : remboursés si une table redémarre.

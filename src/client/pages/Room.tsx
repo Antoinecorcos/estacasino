@@ -5,6 +5,7 @@ import { Lien } from "../router";
 import { useSession } from "../session";
 import type { StatutConnexion } from "../useRoom";
 import { TableBlackjack } from "./Blackjack";
+import { TablePoker } from "./Poker";
 import { TableRoulette } from "./Roulette";
 
 export function BarreRoom({ titre, code, detail, statut }: { titre: string; code: string | null; detail: string; statut: StatutConnexion }) {
@@ -78,5 +79,6 @@ export function PageRoom({ code }: { code: string }) {
   }
   if (!jeu) return null;
   const chemin = `/rooms/${code}/ws`;
+  if (jeu === "poker") return <TablePoker chemin={chemin} />;
   return jeu === "blackjack" ? <TableBlackjack chemin={chemin} /> : <TableRoulette chemin={chemin} />;
 }

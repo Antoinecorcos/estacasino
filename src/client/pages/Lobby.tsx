@@ -10,6 +10,7 @@ import {
 } from "../../shared/regles";
 import { api } from "../api";
 import { LIGUES, trouverLigue } from "../../shared/ligues";
+import { ENTREES_SNG, NIVEAUX_POKER } from "../../shared/regles";
 import { DefisDuJour } from "../components/Defis";
 import { BadgeLigue } from "../components/Ligue";
 import { Carte, Page } from "../components/Elements";
@@ -42,6 +43,8 @@ export function Lobby() {
   const [code, setCode] = useState("");
   const [erreurCode, setErreurCode] = useState<string | null>(null);
   const [creation, setCreation] = useState<Jeu | null>(null);
+  const [variante, setVariante] = useState<"cash" | "sng">("cash");
+  const [niveauPoker, setNiveauPoker] = useState("n2");
   const [limites, setLimites] = useState(BLACKJACK_LIMITES_DEFAUT);
   if (!moi) return null;
 
@@ -60,7 +63,8 @@ export function Lobby() {
   const creer = async () => {
     if (!creation) return;
     try {
-      const r = await api<{ code: string }>("/rooms", { corps: { jeu: creation, ...limites } });
+      const corps = creation === "poker" ? { jeu: "poker", variante, niveau: niveauPoker } : { jeu: creation, ...limites };
+      const r = await api<{ code: string }>("/rooms", { corps });
       naviguer(`/room/${r.code}`);
     } catch (err) {
       notifier((err as Error).message, true);
@@ -165,13 +169,26 @@ export function Lobby() {
                   </div>
                 </div>
               </article>
+              <article className="carte-ui carte-jeu">
+                <div className="visuel" aria-hidden="true">
+                  <div style={{ transform: "rotate(-10deg) translateY(6px)" }}><Carte carte={{ r: "Q", c: "D" }} petite /></div>
+                  <div style={{ transform: "rotate(2deg)" }}><Carte carte={{ r: "Q", c: "S" }} petite /></div>
+                  <div className="mini-jetons-poker"><span /><span /><span /></div>
+                </div>
+                <div className="corps">
+                  <h3 style={{ fontSize: 26 }}>Poker Hold'em</h3>
+                  <p className="muet" style={{ fontSize: 14, flex: 1 }}>De 2 à 6 joueurs, sans limite : partie libre ou Sit &amp; Go, aux tables publiques ou entre amis.</p>
+                  <div className="boutons-jeu">
+                    <button type="button" className="btn btn-principal" onClick={() => naviguer("/poker")}>Tables publiques</button>
+                    <button type="button" className="btn btn-contour" onClick={() => { setCreation("poker"); document.getElementById("code")?.scrollIntoView({ block: "center", behavior: "smooth" }); }}>
+                      Table entre amis
+                    </button>
+                  </div>
+                </div>
+              </article>
             </div>
             <h2 className="surtitre" style={{ marginTop: 6 }}>Prochainement</h2>
             <div className="prochainement">
-              <div className="carte-ui bientot-mini" aria-label="Poker Hold'em, bientôt disponible">
-                <span className="italique">Poker Hold'em</span>
-                <span className="muet">De 2 à 8 joueurs, rooms et tournois</span>
-              </div>
               <div className="carte-ui bientot-mini" aria-label="Machine à sous, bientôt disponible">
                 <span className="italique">Machine à sous</span>
                 <span className="muet">Une seule machine, très soignée</span>
@@ -195,12 +212,36 @@ export function Lobby() {
               {creation ? (
                 <div className="pile" style={{ gap: 12 }}>
                   <div className="onglets" role="group" aria-label="Jeu de la room">
-                    {(["blackjack", "roulette"] as const).map((j) => (
-                      <button key={j} type="button" aria-pressed={creation === j} onClick={() => { setCreation(j); setLimites(j === "blackjack" ? BLACKJACK_LIMITES_DEFAUT : ROULETTE_LIMITES_DEFAUT); }}>
-                        {j === "blackjack" ? "Blackjack" : "Roulette"}
+                    {(["blackjack", "roulette", "poker"] as const).map((j) => (
+                      <button key={j} type="button" aria-pressed={creation === j} onClick={() => { setCreation(j); if (j !== "poker") setLimites(j === "blackjack" ? BLACKJACK_LIMITES_DEFAUT : ROULETTE_LIMITES_DEFAUT); }}>
+                        {j === "blackjack" ? "Blackjack" : j === "roulette" ? "Roulette" : "Poker"}
                       </button>
                     ))}
                   </div>
+                  {creation === "poker" ? (
+                    <div className="rangee" style={{ gap: 10 }}>
+                      <div className="champ" style={{ flex: 1 }}>
+                        <label htmlFor="variante">Formule</label>
+                        <select id="variante" className="input" value={variante} onChange={(e) => { const v = e.target.value as "cash" | "sng"; setVariante(v); setNiveauPoker(v === "cash" ? "n2" : "s1"); }}>
+                          <option value="cash">Partie libre</option>
+                          <option value="sng">Sit &amp; Go</option>
+                        </select>
+                      </div>
+                      <div className="champ" style={{ flex: 1 }}>
+                        <label htmlFor="niveau-poker">{variante === "cash" ? "Blindes" : "Entrée"}</label>
+                        <select id="niveau-poker" className="input" value={niveauPoker} onChange={(e) => setNiveauPoker(e.target.value)}>
+                          {(variante === "cash" ? NIVEAUX_POKER.map((n) => ({ id: n.id, texte: `${formatJetons(n.petite)} / ${formatJetons(n.grosse)}`, ligue: n.ligue })) : ENTREES_SNG.map((n) => ({ id: n.id, texte: formatJetons(n.entree), ligue: n.ligue }))).map((o) => {
+                            const bloque = LIGUES.findIndex((l) => l.id === moi.ligue.id) < LIGUES.findIndex((l) => l.id === o.ligue);
+                            return (
+                              <option key={o.id} value={o.id} disabled={bloque}>
+                                {o.texte}{bloque ? ` (ligue ${trouverLigue(o.ligue).nom})` : ""}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                    </div>
+                  ) : (
                   <div className="rangee" style={{ gap: 10 }}>
                     <div className="champ" style={{ flex: 1 }}>
                       <label htmlFor="mise-min">Mise minimum</label>
@@ -223,6 +264,7 @@ export function Lobby() {
                       </select>
                     </div>
                   </div>
+                  )}
                   <p className="muet" style={{ fontSize: 13 }}>
                     Toute personne qui a le code peut entrer : partagez-le avec qui vous voulez. La room ferme après 15 minutes sans joueur.
                   </p>

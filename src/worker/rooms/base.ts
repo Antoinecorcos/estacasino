@@ -17,6 +17,8 @@ export interface ConfigRoom {
   theme: string | null;
   min: number;
   max: number;
+  /** Poker : mode, niveau (blindes ou entrée), et nom de la table publique (null pour une room privée). */
+  poker?: { mode: "cash" | "sng"; niveau: string; publique: string | null };
 }
 
 export interface Identite {
@@ -61,6 +63,12 @@ export abstract class RoomBase<Etat, MessageClient> extends DurableObject<Env> {
     else await this.ctx.storage.delete(cle);
   }
 
+  /** Fixe le montant en jeu (poker : le tapis d'un joueur assis à une partie libre). */
+  protected async fixerEnJeu(joueurId: string, montant: number): Promise<void> {
+    if (montant > 0) await this.ctx.storage.put(`en-jeu:${joueurId}`, montant);
+    else await this.ctx.storage.delete(`en-jeu:${joueurId}`);
+  }
+
   /** La main ou le tour du joueur est réglé : plus rien n'est en jeu pour lui. */
   protected async solderEnJeu(joueurId: string): Promise<void> {
     await this.ctx.storage.delete(`en-jeu:${joueurId}`);
@@ -86,6 +94,10 @@ export abstract class RoomBase<Etat, MessageClient> extends DurableObject<Env> {
   protected abstract etat(): Etat;
   /** Appelé quand le premier joueur arrive dans une room vide (ex. relancer la roue). */
   protected surPremiereConnexion(): void {}
+  /** État envoyé à un joueur précis (par défaut le même pour tous ; le poker cache les cartes des autres). */
+  protected etatPour(_id: string): Etat {
+    return this.etat();
+  }
 
   async fetch(req: Request): Promise<Response> {
     if (req.headers.get("Upgrade") !== "websocket") return new Response("WebSocket attendu", { status: 426 });
@@ -203,9 +215,9 @@ export abstract class RoomBase<Etat, MessageClient> extends DurableObject<Env> {
   }
 
   protected diffuser(): void {
-    const etat = this.etat();
+    const commun = this.etat();
     for (const [ws, id] of this.sockets) {
-      const msg: MessageServeur<Etat> = { t: "etat", etat, moi: id };
+      const msg: MessageServeur<Etat> = { t: "etat", etat: this.etatPour === RoomBase.prototype.etatPour ? commun : this.etatPour(id), moi: id };
       try {
         ws.send(JSON.stringify(msg));
       } catch {

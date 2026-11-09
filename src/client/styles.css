@@ -527,3 +527,68 @@ kbd { font: inherit; font-size: 11px; font-weight: 800; padding: 1px 6px; border
 .vue-tableau .tableau td, .vue-tableau .tableau th { font-size: 13px; padding: 6px 10px; }
 .lien-discret { display: inline-block; margin-top: 6px; font-size: 12px; }
 @media (max-width: 760px) { .soldes { gap: 8px; } .bouton-icone { width: 34px; height: 34px; } }
+
+/* ───── Poker ───── */
+.table-poker {
+  --cw: 54px;
+  position: relative; width: 100%; max-width: 1100px; margin: 4px auto 0; height: clamp(420px, calc(100dvh - 330px), 600px);
+  border-radius: 50%; border: 14px solid #1a1d1f; background: radial-gradient(ellipse at 50% 40%, var(--feutre), #06231b);
+  box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.55), 0 30px 60px rgba(0, 0, 0, 0.55);
+}
+.table-poker.table-3d { background: none; border-color: transparent; box-shadow: none; border-radius: 0; }
+.table-poker .table-toile { inset: -14px; width: calc(100% + 28px); height: calc(100% + 28px); }
+.table-poker .ancre-sabot { left: auto; right: 30%; top: 12%; width: 40px; height: 56px; opacity: 0; }
+.table-poker:not(.table-3d) .ancre-sabot { opacity: 1; }
+.table-poker .ancre-defausse { left: 30%; top: 12%; }
+.centre-poker { position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 10px; z-index: 1; }
+.centre-poker .board { min-height: calc(var(--cw) * 1.42); gap: 8px; }
+.centre-poker .board > .ancre-carte + .ancre-carte { margin-left: 0; }
+.pot-poker { padding: 4px 14px; border-radius: 999px; background: rgba(11, 13, 14, 0.7); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); font-weight: 800; font-size: 14px; color: var(--accent-clair); }
+.siege-poker { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 4px; z-index: 2; width: max-content; }
+.siege-poker.couche .plaque { opacity: 0.5; }
+.siege-poker.actif .plaque { animation: tour-pulse 1.1s ease-in-out infinite; }
+.siege-poker.gagne .plaque { box-shadow: 0 0 0 2px var(--accent), 0 0 30px color-mix(in srgb, var(--accent) 70%, transparent); }
+.cartes-poker { display: flex; gap: 0; }
+.cartes-poker .ancre-carte { --cw: 40px; }
+.cartes-poker .ancre-carte + .ancre-carte { margin-left: -14px; }
+.cartes-poker .ancre-carte.grande { --cw: 62px; }
+.cartes-poker .ancre-carte.grande + .ancre-carte.grande { margin-left: -6px; }
+.siege-poker .plaque { position: relative; }
+.siege-poker .chrono { position: absolute; right: -10px; top: -10px; min-width: 24px; height: 24px; border-radius: 999px; background: var(--accent); color: var(--encre); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.siege-poker .pastille { font-size: 11px; }
+.siege-poker .pastille.gagne { background: var(--accent); color: var(--encre); }
+.siege-poker .pastille.couche { opacity: 0.7; }
+.combinaison-gagnante { font-family: var(--titre); font-style: italic; font-size: 15px; color: var(--accent-clair); text-shadow: 0 2px 8px #000; white-space: nowrap; }
+.siege-poker .absent { font-size: 11px; }
+.mise-poker { position: absolute; transform: translate(-50%, -50%); z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 30px; min-height: 26px; }
+.mise-poker .montant-mise { font-size: 11px; font-weight: 800; color: var(--ivoire); text-shadow: 0 1px 4px #000; margin-top: 22px; }
+.table-poker:not(.table-3d) .mise-poker .montant-mise { display: none; }
+.table-3d .mise-poker .pile-2d { visibility: hidden; position: absolute; }
+.bouton-donneur { position: absolute; transform: translate(-50%, -50%); width: 24px; height: 24px; border-radius: 50%; background: var(--ivoire); color: var(--encre); font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5); z-index: 1; }
+.bandeau-sng { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: center; font-size: 13px; color: var(--ivoire-2); padding: 4px 0 6px; }
+.classement-sng { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; padding: 20px 24px; display: flex; flex-direction: column; gap: 10px; min-width: 280px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6); }
+.actions-poker { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.relance { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.relance input[type="range"] { width: 180px; accent-color: var(--accent); }
+.raccourcis-relance { display: flex; gap: 4px; }
+.raccourcis-relance .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.ma-combinaison { color: var(--accent-clair); font-size: 16px; }
+.aide-combinaison { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.aide-combinaison .btn-lien { font-size: 11px; color: var(--muet); }
+input[type="range"] { accent-color: var(--accent); }
+.grille-poker { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.table-publique { padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+.table-publique .blindes { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
+.table-publique .btn { margin-top: 8px; }
+.table-publique.bloquee { opacity: 0.6; }
+.mini-jetons-poker { display: flex; flex-direction: column-reverse; margin-left: 10px; }
+.mini-jetons-poker span { width: 30px; height: 9px; border-radius: 50%; background: var(--accent); border: 2px solid var(--encre); margin-top: -3px; }
+@media (max-width: 760px) {
+  .table-poker { --cw: 38px; height: 560px !important; border-width: 8px; border-radius: 45%; }
+  .cartes-poker .ancre-carte { --cw: 28px; }
+  .cartes-poker .ancre-carte.grande { --cw: 46px; }
+  .siege-poker .plaque-texte .pseudo { max-width: 60px; font-size: 11px; }
+  .relance input[type="range"] { width: 100%; }
+  .actions-poker { width: 100%; }
+}
+.pile-pot { width: 34px; height: 26px; }

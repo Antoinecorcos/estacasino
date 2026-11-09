@@ -74,6 +74,13 @@ function demiLune(T: Three, demiLargeur: number, profondeur: number, plat: numbe
   return s;
 }
 
+/** Table ovale (poker) : même encombrement que la demi-lune (haut à `plat`, profondeur `profondeur`). */
+function ovale(T: Three, demiLargeur: number, profondeur: number, plat: number): TT.Shape {
+  const s = new T.Shape();
+  s.absellipse(0, plat - profondeur / 2, demiLargeur, profondeur / 2, 0, Math.PI * 2, false, 0);
+  return s;
+}
+
 function uvNormalises(g: TT.BufferGeometry): TT.BufferGeometry {
   g.computeBoundingBox();
   const b = g.boundingBox!;
@@ -94,7 +101,16 @@ function webgl(): boolean {
 
 const VALEURS_JETONS = [5000, 1000, 500, 100, 50, 10];
 
-export async function creerTable3D(hote: HTMLElement, themeDepart: Theme, libelles: [string, string]): Promise<Table3D | null> {
+export interface OptionsTable {
+  /** Demi-lune (blackjack) ou ovale (poker). */
+  forme?: "demi-lune" | "ovale";
+  /** Position verticale des deux textes du feutre, en fraction de la hauteur de l'écran. */
+  yLibelles?: [number, number];
+}
+
+export async function creerTable3D(hote: HTMLElement, themeDepart: Theme, libelles: [string, string], options: OptionsTable = {}): Promise<Table3D | null> {
+  const forme = options.forme === "ovale" ? ovale : demiLune;
+  const [yL1, yL2] = options.yLibelles ?? [0.35, 0.39];
   if (!webgl() || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return null;
   let T: Three;
   try {
@@ -292,7 +308,7 @@ export async function creerTable3D(hote: HTMLElement, themeDepart: Theme, libell
     const rebord = Math.min(demiL, prof) * 0.05;
 
     const bois = new T.Mesh(
-      new T.ExtrudeGeometry(demiLune(T, demiL, prof, plat), { depth: 0.35, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.06, bevelSegments: 3, curveSegments: 48 }),
+      new T.ExtrudeGeometry(forme(T, demiL, prof, plat), { depth: 0.35, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.06, bevelSegments: 3, curveSegments: 48 }),
       new T.MeshStandardMaterial({ color: theme.bois, roughness: 0.34 }),
     );
     bois.rotation.x = -Math.PI / 2;
@@ -311,8 +327,8 @@ export async function creerTable3D(hote: HTMLElement, themeDepart: Theme, libell
       const z = versTable(b.left + b.width / 2, b.top + b.height * yEcran).z;
       return Math.min(0.95, Math.max(0.05, (z - (-fplat)) / fp));
     };
-    const yTexte1 = fraction(0.35) * ch;
-    const yTexte2 = fraction(0.39) * ch;
+    const yTexte1 = fraction(yL1) * ch;
+    const yTexte2 = fraction(yL2) * ch;
     const texFeutre = texture(cw, ch, (x) => {
       const g = x.createRadialGradient(cw / 2, ch * 0.35, 20, cw / 2, ch * 0.4, cw * 0.62);
       g.addColorStop(0, theme.feutreCentre);
@@ -327,7 +343,8 @@ export async function creerTable3D(hote: HTMLElement, themeDepart: Theme, libell
       x.strokeStyle = theme.accent;
       x.lineWidth = 3;
       x.beginPath();
-      x.ellipse(cw / 2, 0, (cw / 2) * 0.8, ch * 0.74, 0, 0, Math.PI);
+      if (options.forme === "ovale") x.ellipse(cw / 2, ch / 2, (cw / 2) * 0.8, (ch / 2) * 0.72, 0, 0, Math.PI * 2);
+      else x.ellipse(cw / 2, 0, (cw / 2) * 0.8, ch * 0.74, 0, 0, Math.PI);
       x.stroke();
       x.globalAlpha = 0.55;
       x.fillStyle = theme.accent;
@@ -340,13 +357,13 @@ export async function creerTable3D(hote: HTMLElement, themeDepart: Theme, libell
       x.fillText(libelles[1].toUpperCase().split("").join(" "), cw / 2, yTexte2);
       x.globalAlpha = 1;
     });
-    const feutre = new T.Mesh(uvNormalises(new T.ShapeGeometry(demiLune(T, fl, fp, fplat), 48)), new T.MeshStandardMaterial({ map: texFeutre, roughness: 0.95 }));
+    const feutre = new T.Mesh(uvNormalises(new T.ShapeGeometry(forme(T, fl, fp, fplat), 48)), new T.MeshStandardMaterial({ map: texFeutre, roughness: 0.95 }));
     feutre.rotation.x = -Math.PI / 2;
     feutre.position.y = 0.04;
     feutre.receiveShadow = true;
     groupeTable.add(feutre);
     const filet = new T.Mesh(
-      new T.ShapeGeometry(demiLune(T, fl + rebord * 0.25, fp + rebord * 0.35, fplat + rebord * 0.12), 48),
+      new T.ShapeGeometry(forme(T, fl + rebord * 0.25, fp + rebord * 0.35, fplat + rebord * 0.12), 48),
       new T.MeshStandardMaterial({ color: theme.accent, roughness: 0.3, metalness: 0.7 }),
     );
     filet.rotation.x = -Math.PI / 2;

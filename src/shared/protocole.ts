@@ -105,6 +105,84 @@ export type RlMessageClient =
 
 // ───────────── Commun ─────────────
 
+// ───────────── Poker ─────────────
+
+export interface PkJoueur {
+  id: string;
+  pseudo: string;
+  avatar: ConfigAvatar;
+  place: number;
+  /** Jetons devant le joueur (hors mises de la rue en cours). */
+  tapis: number;
+  /** Mise de la rue en cours. */
+  mise: number;
+  couche: boolean;
+  tapisTout: boolean;
+  enMain: boolean;
+  /** Cartes privées : visibles par leur propriétaire, ou une fois montrées ; sinon `null` (dos). */
+  cartes: (Carte | null)[];
+  /** Dernière action affichée : « Suit », « Relance à 400 », « Parole »… */
+  action: string | null;
+  connecte: boolean;
+  /** Gain de la dernière main (abattage). */
+  gain: number;
+  /** Combinaison montrée à l'abattage. */
+  combinaison: string | null;
+  /** Cartes de la combinaison gagnante (à mettre en valeur). */
+  meilleures: Carte[];
+  /** Réserve de réflexion restante (ms). */
+  reserve: number;
+  /** Sit & Go : place finale si éliminé. */
+  rang: number | null;
+  partant: boolean;
+}
+
+export type PkPhase = "attente" | "preflop" | "flop" | "turn" | "river" | "abattage" | "termine";
+
+export interface PkEtat {
+  jeu: "poker";
+  mode: "cash" | "sng";
+  code: string | null;
+  nom: string;
+  hoteId: string | null;
+  theme: string | null;
+  phase: PkPhase;
+  donne: number;
+  blindes: { petite: number; grosse: number };
+  /** Partie libre : cave minimum et maximum. */
+  cave: { min: number; max: number } | null;
+  joueurs: PkJoueur[];
+  spectateurs: number;
+  board: Carte[];
+  /** Total des pots (mises des rues précédentes) + mises en cours. */
+  pot: number;
+  bouton: number | null;
+  tour: string | null;
+  echeance: number | null;
+  /** Montant le plus haut misé sur la rue en cours, et relance minimum (montant total à atteindre). */
+  miseCourante: number;
+  relanceMin: number;
+  sng: {
+    entree: number;
+    prix: number[];
+    demarre: boolean;
+    niveau: number;
+    prochainNiveau: number | null;
+    classement: { pseudo: string; place: number; gain: number }[];
+    depart: number | null; // démarrage automatique prévu (tables publiques)
+  } | null;
+  remarque: string | null;
+}
+
+export type PkAction = "coucher" | "parole" | "suivre" | "relancer";
+
+export type PkMessageClient =
+  | { t: "asseoir"; cave?: number }
+  | { t: "quitter" }
+  | { t: "action"; action: PkAction; montant?: number }
+  | { t: "montrer" }
+  | { t: "demarrer" };
+
 /** Réactions rapides en room : de courtes phrases, dans le ton de la maison. */
 export const REACTIONS = ["Bien joué", "Bravo !", "Aïe…", "Allez !", "Chanceux…", "Encore !"] as const;
 

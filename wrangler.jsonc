@@ -34,11 +34,13 @@
   "durable_objects": {
     "bindings": [
       { "name": "ROOMS_BLACKJACK", "class_name": "BlackjackRoom" },
-      { "name": "ROOMS_ROULETTE", "class_name": "RouletteRoom" }
+      { "name": "ROOMS_ROULETTE", "class_name": "RouletteRoom" },
+      { "name": "ROOMS_POKER", "class_name": "PokerRoom" }
     ]
   },
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["BlackjackRoom", "RouletteRoom"] }
+    { "tag": "v1", "new_sqlite_classes": ["BlackjackRoom", "RouletteRoom"] },
+    { "tag": "v2", "new_sqlite_classes": ["PokerRoom"] }
   ],
   "observability": { "enabled": true }
 }

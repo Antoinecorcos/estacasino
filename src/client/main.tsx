@@ -7,6 +7,8 @@ import { Boutique } from "./pages/Boutique";
 import { Classement } from "./pages/Classement";
 import { Lobby } from "./pages/Lobby";
 import { Mentions } from "./pages/Mentions";
+import { TablePoker } from "./pages/Poker";
+import { PokerLobby } from "./pages/PokerLobby";
 import { Profil } from "./pages/Profil";
 import { PageBlackjackSolo, PageGrandeRoue, PageRoom, PageRouletteSolo } from "./pages/Room";
 import { naviguer, useChemin } from "./router";
@@ -23,7 +25,7 @@ const PAGES_PUBLIQUES: Record<string, () => React.JSX.Element | null> = {
 };
 
 /** Pages de jeu : plein écran, sans pied de page (la mention « jetons fictifs » est dans la barre du jeu). */
-const PAGE_JEU = /^\/(blackjack|roulette(\/solo)?|room\/[A-Za-z]{5})$/;
+const PAGE_JEU = /^\/(blackjack|roulette(\/solo)?|room\/[A-Za-z]{5}|poker\/table\/[a-z0-9-]+)$/;
 
 function Contenu() {
   const chemin = useChemin();
@@ -49,6 +51,9 @@ function Contenu() {
   if (chemin === "/roulette/solo") return <PageRouletteSolo />;
   if (chemin === "/profil") return <Profil />;
   if (chemin === "/admin") return <Admin />;
+  if (chemin === "/poker") return <PokerLobby />;
+  const table = /^\/poker\/table\/([a-z0-9-]{3,40})$/.exec(chemin);
+  if (table) return <TablePoker key={table[1]} chemin={`/poker/table/${table[1]}/ws`} />;
   const room = /^\/room\/([A-Za-z]{5})$/.exec(chemin);
   if (room) return <PageRoom code={room[1].toUpperCase()} />;
   return (

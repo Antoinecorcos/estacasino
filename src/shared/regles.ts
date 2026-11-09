@@ -22,7 +22,49 @@ export const PALIERS_MISE_MAX = [500, 1_000, 2_000, 5_000, 10_000, 25_000] as co
 export const BLACKJACK_LIMITES_DEFAUT = { min: 100, max: 2_000 };
 export const ROULETTE_LIMITES_DEFAUT = { min: 100, max: 5_000 };
 
-export type Jeu = "blackjack" | "roulette";
+export type Jeu = "blackjack" | "roulette" | "poker";
+
+// ───── Poker Texas Hold'em (no-limit) ─────
+export const POKER_PLACES = 6;
+export const POKER_DELAI_ACTION_MS = 20_000;
+export const POKER_RESERVE_MS = 30_000; // réserve de réflexion, par main
+export const CAVE_MIN_GB = 40; // cave minimum, en grosses blindes
+export const CAVE_MAX_GB = 100;
+
+export interface NiveauPoker {
+  id: string;
+  petite: number;
+  grosse: number;
+  /** Ligue minimum pour s'y asseoir. */
+  ligue: string;
+}
+export const NIVEAUX_POKER: NiveauPoker[] = [
+  { id: "n1", petite: 10, grosse: 20, ligue: "bronze" },
+  { id: "n2", petite: 50, grosse: 100, ligue: "bronze" },
+  { id: "n3", petite: 250, grosse: 500, ligue: "argent" },
+  { id: "n4", petite: 1_000, grosse: 2_000, ligue: "or" },
+];
+
+export interface EntreeSng {
+  id: string;
+  entree: number;
+  ligue: string;
+}
+export const ENTREES_SNG: EntreeSng[] = [
+  { id: "s1", entree: 500, ligue: "bronze" },
+  { id: "s2", entree: 2_000, ligue: "bronze" },
+  { id: "s3", entree: 10_000, ligue: "argent" },
+];
+export const SNG_TAPIS = 1_500; // jetons de tournoi
+export const SNG_DUREE_NIVEAU_MS = 4 * 60 * 1000;
+/** Structure des blindes du Sit & Go. */
+export const SNG_BLINDES: [number, number][] = [
+  [10, 20], [15, 30], [25, 50], [50, 100], [75, 150], [100, 200], [150, 300], [200, 400], [300, 600], [500, 1_000], [750, 1_500], [1_000, 2_000],
+];
+/** Répartition des gains du Sit & Go selon le nombre de participants. */
+export function repartitionSng(participants: number): number[] {
+  return participants <= 3 ? [1] : [0.65, 0.35];
+}
 
 /** Alphabet des codes de room : pas de I ni de O (confusion avec 1 et 0). */
 export const ALPHABET_CODE = "ABCDEFGHJKLMNPQRSTUVWXYZ";

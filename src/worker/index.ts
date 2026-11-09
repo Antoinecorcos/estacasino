@@ -20,6 +20,11 @@ import {
   PALIERS_MISE_MAX,
   PALIERS_MISE_MIN,
   ROULETTE_LIMITES_DEFAUT,
+  ENTREES_SNG,
+  type EntreeSng,
+  NIVEAUX_POKER,
+  type NiveauPoker,
+  POKER_PLACES,
 } from "../shared/regles";
 import { age, fermerSession, joueurConnecte, type JoueurSession, normaliserCodeSecours, nouveauCodeSecours, ouvrirSession } from "./auth";
 import { chaineAleatoire, hacherMotDePasse, sha256, verifierMotDePasse } from "./crypto";
@@ -34,6 +39,7 @@ import { lireDefis } from "./defis";
 
 export { BlackjackRoom } from "./rooms/blackjack";
 export { RouletteRoom } from "./rooms/roulette";
+export { PokerRoom } from "./rooms/poker";
 
 type C = Context<{ Bindings: Env }>;
 const app = new Hono<{ Bindings: Env }>().basePath("/api");
@@ -389,7 +395,7 @@ app.get("/classement", async (c) => {
   if (!saison) return c.json({ saison: null, lignes: [] });
   const jeu = c.req.query("jeu");
   const [colGains, colParties] =
-    jeu === "blackjack" ? ["gains_bj", "mains_bj"] : jeu === "roulette" ? ["gains_roulette", "tours_roulette"] : ["gains_nets", "mains"];
+    jeu === "blackjack" ? ["gains_bj", "mains_bj"] : jeu === "roulette" ? ["gains_roulette", "tours_roulette"] : jeu === "poker" ? ["gains_poker", "mains_poker"] : ["gains_nets", "mains"];
   const lignes = await c.env.DB.prepare(
     `SELECT j.pseudo, j.avatar, s.${colGains} AS gains, s.${colParties} AS parties
      FROM stats_saison s JOIN joueurs j ON j.id = s.joueur_id
@@ -408,7 +414,7 @@ app.get("/classement", async (c) => {
       gains: l.gains,
       parties: l.parties,
       // La ligue se calcule sur le classement général (gains nets de la saison).
-      ligue: jeu === "blackjack" || jeu === "roulette" ? null : ligueDe(l.gains, l.parties, i + 1).id,
+      ligue: jeu === "blackjack" || jeu === "roulette" || jeu === "poker" ? null : ligueDe(l.gains, l.parties, i + 1).id,
     })),
   });
 });
@@ -418,7 +424,8 @@ app.get("/classement", async (c) => {
 app.post("/rooms", async (c) => {
   const moi = await exigerJoueur(c);
   if (moi instanceof Response) return moi;
-  const b = await corps<{ jeu: Jeu; min: number; max: number }>(c);
+  const b = await corps<{ jeu: Jeu; min: number; max: number; variante: "cash" | "sng"; niveau: string }>(c);
+  if (b.jeu === "poker") return creerRoomPoker(c, moi, b.variante ?? "cash", b.niveau ?? "");
   if (b.jeu !== "blackjack" && b.jeu !== "roulette") return erreur(c, "Jeu inconnu.");
   const defaut = b.jeu === "blackjack" ? BLACKJACK_LIMITES_DEFAUT : ROULETTE_LIMITES_DEFAUT;
   const min = Number(b.min ?? defaut.min);
@@ -446,18 +453,94 @@ app.post("/rooms", async (c) => {
 
 async function lireRoom(c: C, code: string) {
   return c.env.DB.prepare(
-    "SELECT r.code, r.jeu, r.mise_min, r.mise_max, r.ouverte, r.hote_id, r.theme, j.pseudo AS hote FROM rooms r JOIN joueurs j ON j.id = r.hote_id WHERE r.code = ?",
+    "SELECT r.code, r.jeu, r.mise_min, r.mise_max, r.ouverte, r.hote_id, r.theme, r.variante, r.niveau, j.pseudo AS hote FROM rooms r JOIN joueurs j ON j.id = r.hote_id WHERE r.code = ?",
   )
     .bind(code)
-    .first<{ code: string; jeu: Jeu; mise_min: number; mise_max: number; ouverte: number; hote_id: string; theme: string; hote: string }>();
+    .first<{ code: string; jeu: Jeu; mise_min: number; mise_max: number; ouverte: number; hote_id: string; theme: string; variante: string | null; niveau: string | null; hote: string }>();
 }
+
+// ───────────── Poker ─────────────
+
+const RANG_LIGUE = (id: string) => LIGUES.findIndex((l) => l.id === id);
+
+/** Vérifie que la ligue du joueur ouvre ce niveau de poker ; retourne un message d'erreur sinon. */
+async function niveauPokerAccessible(db: D1Database, joueurId: string, mode: "cash" | "sng", niveau: string): Promise<string | null> {
+  const def = mode === "cash" ? NIVEAUX_POKER.find((n) => n.id === niveau) : ENTREES_SNG.find((n) => n.id === niveau);
+  if (!def) return "Niveau de table inconnu.";
+  const { ligue } = await situationSaison(db, joueurId);
+  if (RANG_LIGUE(ligue.id) < RANG_LIGUE(def.ligue)) return `Cette table se débloque en ligue ${LIGUES[RANG_LIGUE(def.ligue)].nom}.`;
+  return null;
+}
+
+async function creerRoomPoker(c: C, moi: JoueurSession, variante: "cash" | "sng", niveau: string): Promise<Response> {
+  if (variante !== "cash" && variante !== "sng") return erreur(c, "Variante inconnue.");
+  const refus = await niveauPokerAccessible(c.env.DB, moi.id, variante, niveau);
+  if (refus) return erreur(c, refus, 403);
+  for (let essai = 0; essai < 8; essai++) {
+    const code = chaineAleatoire(ALPHABET_CODE, 5);
+    const r = await c.env.DB.prepare(
+      `INSERT INTO rooms (code, jeu, hote_id, mise_min, mise_max, ouverte, cree_le, theme, variante, niveau) VALUES (?1, 'poker', ?2, 0, 0, 1, ?3, ?5, ?6, ?7)
+       ON CONFLICT (code) DO UPDATE SET jeu = 'poker', hote_id = ?2, ouverte = 1, cree_le = ?3, theme = ?5, variante = ?6, niveau = ?7
+       WHERE rooms.ouverte = 0 AND rooms.cree_le < ?4`,
+    )
+      .bind(code, moi.id, Date.now(), Date.now() - 24 * 60 * 60 * 1000, trouverTheme(moi.theme).id, variante, niveau)
+      .run();
+    if (r.meta.changes === 1) return c.json({ code, jeu: "poker" });
+  }
+  return erreur(c, "Impossible de créer la room, réessayez.", 503);
+}
+
+/** Tables publiques : occupation par niveau, pour le lobby du poker. */
+app.get("/poker/tables", async (c) => {
+  const r = await c.env.DB.prepare(
+    "SELECT mode, niveau, SUM(joueurs) AS joueurs, COUNT(*) AS tables FROM poker_tables WHERE maj > ? AND statut IN ('ouverte', 'inscription', 'en_cours') GROUP BY mode, niveau",
+  )
+    .bind(Date.now() - 6 * 60 * 60 * 1000)
+    .all<{ mode: string; niveau: string; joueurs: number; tables: number }>();
+  return c.json({ occupation: r.results });
+});
+
+/** Trouve une table publique avec une place libre (ou en ouvre une), et renvoie son nom. */
+app.post("/poker/rejoindre", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  const b = await corps<{ mode: "cash" | "sng"; niveau: string }>(c);
+  if (b.mode !== "cash" && b.mode !== "sng") return erreur(c, "Mode inconnu.");
+  const refus = await niveauPokerAccessible(c.env.DB, moi.id, b.mode, b.niveau ?? "");
+  if (refus) return erreur(c, refus, 403);
+  const statut = b.mode === "cash" ? "ouverte" : "inscription";
+  const libre = await c.env.DB.prepare(
+    "SELECT nom FROM poker_tables WHERE mode = ? AND niveau = ? AND statut = ? AND joueurs < ? ORDER BY joueurs DESC, maj DESC LIMIT 1",
+  )
+    .bind(b.mode, b.niveau, statut, POKER_PLACES)
+    .first<{ nom: string }>();
+  if (libre) return c.json({ nom: libre.nom });
+  const nom = `${b.mode}-${b.niveau}-${chaineAleatoire("abcdefghjkmnpqrstuvwxyz23456789", 6)}`;
+  await c.env.DB.prepare("INSERT INTO poker_tables (nom, mode, niveau, joueurs, statut, maj) VALUES (?, ?, ?, 0, ?, ?)").bind(nom, b.mode, b.niveau, statut, Date.now()).run();
+  return c.json({ nom });
+});
+
+app.get("/poker/table/:nom/ws", async (c) => {
+  const t = await c.env.DB.prepare("SELECT nom, mode, niveau FROM poker_tables WHERE nom = ?").bind(c.req.param("nom")).first<{ nom: string; mode: "cash" | "sng"; niveau: string }>();
+  if (!t) return erreur(c, "Table introuvable.", 404);
+  const def = t.mode === "cash" ? NIVEAUX_POKER.find((n) => n.id === t.niveau) : ENTREES_SNG.find((n) => n.id === t.niveau);
+  const nom = t.mode === "cash" ? `Table publique · ${(def as NiveauPoker).petite} / ${(def as NiveauPoker).grosse}` : `Sit & Go public · entrée ${(def as EntreeSng).entree}`;
+  return versRoom(c, c.env.ROOMS_POKER, `publique:${t.nom}`, {
+    code: null, solo: false, hoteId: null, nom, theme: null, min: 0, max: 0, poker: { mode: t.mode, niveau: t.niveau, publique: t.nom },
+  });
+});
+
+app.get("/poker/table/:nom", async (c) => {
+  const t = await c.env.DB.prepare("SELECT nom, mode, niveau, statut FROM poker_tables WHERE nom = ?").bind(c.req.param("nom")).first();
+  return t ? c.json(t) : erreur(c, "Table introuvable.", 404);
+});
 
 app.get("/rooms/:code", async (c) => {
   const code = c.req.param("code").toUpperCase();
   if (!CODE_REGEX.test(code)) return erreur(c, "Code invalide : 5 lettres.", 404);
   const r = await lireRoom(c, code);
   if (!r || !r.ouverte) return erreur(c, "Aucune room ouverte avec ce code.", 404);
-  return c.json({ code: r.code, jeu: r.jeu, min: r.mise_min, max: r.mise_max, hote: r.hote, theme: trouverTheme(r.theme).id });
+  return c.json({ code: r.code, jeu: r.jeu, min: r.mise_min, max: r.mise_max, hote: r.hote, theme: trouverTheme(r.theme).id, variante: r.variante, niveau: r.niveau });
 });
 
 /** Relaie une connexion WebSocket vers le Durable Object de la room, avec l'identité vérifiée du joueur. */
@@ -497,6 +580,12 @@ app.get("/rooms/:code/ws", async (c) => {
   const code = c.req.param("code").toUpperCase();
   const r = CODE_REGEX.test(code) ? await lireRoom(c, code) : null;
   if (!r || !r.ouverte) return erreur(c, "Aucune room ouverte avec ce code.", 404);
+  if (r.jeu === "poker") {
+    const mode = r.variante === "sng" ? "sng" : "cash";
+    return versRoom(c, c.env.ROOMS_POKER, `room:${code}:${r.hote_id}`, {
+      code, solo: false, hoteId: r.hote_id, nom: `Room ${code}`, theme: trouverTheme(r.theme).id, min: 0, max: 0, poker: { mode, niveau: r.niveau ?? "", publique: null },
+    });
+  }
   const ns = r.jeu === "blackjack" ? c.env.ROOMS_BLACKJACK : c.env.ROOMS_ROULETTE;
   return versRoom(c, ns, `room:${code}:${r.hote_id}`, {
     code, solo: false, hoteId: r.hote_id, nom: `Room ${code}`, theme: trouverTheme(r.theme).id, min: r.mise_min, max: r.mise_max,

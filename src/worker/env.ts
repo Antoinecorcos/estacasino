@@ -2,6 +2,7 @@ export interface Env {
   DB: D1Database;
   ROOMS_BLACKJACK: DurableObjectNamespace;
   ROOMS_ROULETTE: DurableObjectNamespace;
+  ROOMS_POKER: DurableObjectNamespace;
   APP_URL: string;
   LIMITE_AUTH?: RateLimit;
   LIMITE_API?: RateLimit;
