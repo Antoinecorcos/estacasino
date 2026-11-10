@@ -18,6 +18,7 @@ const ONGLETS = [
   { id: "blackjack", nom: "Blackjack" },
   { id: "roulette", nom: "Roulette" },
   { id: "poker", nom: "Poker" },
+  { id: "machine", nom: "Machine à sous" },
 ] as const;
 
 export function Classement() {

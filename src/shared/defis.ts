@@ -1,7 +1,7 @@
 // Défis quotidiens : 3 par jour et par joueur, récompensés en jetons (gratuits, sans valeur).
 // Le choix est déterministe (même joueur, même jour = mêmes défis) : pas besoin de tirage stocké à l'avance.
 
-export type TypeDefi = "main_bj" | "gain_bj" | "blackjack" | "double_gagne" | "tour_rl" | "gain_rl" | "plein_gagne" | "rouge_gagne" | "room";
+export type TypeDefi = "main_bj" | "gain_bj" | "blackjack" | "double_gagne" | "tour_rl" | "gain_rl" | "plein_gagne" | "rouge_gagne" | "room" | "tour_ms" | "gain_ms" | "fonction_ms";
 
 export interface ModeleDefi {
   id: string;
@@ -9,7 +9,7 @@ export interface ModeleDefi {
   objectif: number;
   recompense: number;
   titre: string;
-  jeu: "blackjack" | "roulette" | "room";
+  jeu: "blackjack" | "roulette" | "machine" | "room";
 }
 
 export const DEFIS: ModeleDefi[] = [
@@ -21,6 +21,9 @@ export const DEFIS: ModeleDefi[] = [
   { id: "rlg3", type: "gain_rl", objectif: 3, recompense: 800, titre: "Finir 3 tours de roulette gagnant", jeu: "roulette" },
   { id: "rlpl", type: "plein_gagne", objectif: 1, recompense: 1_500, titre: "Toucher un plein à la roulette", jeu: "roulette" },
   { id: "rlr3", type: "rouge_gagne", objectif: 3, recompense: 700, titre: "Gagner 3 fois sur le rouge", jeu: "roulette" },
+  { id: "ms25", type: "tour_ms", objectif: 25, recompense: 600, titre: "Lancer 25 fois la machine à sous", jeu: "machine" },
+  { id: "msg10", type: "gain_ms", objectif: 1, recompense: 1_000, titre: "Gagner 10 fois sa mise à la machine", jeu: "machine" },
+  { id: "msfn", type: "fonction_ms", objectif: 1, recompense: 1_500, titre: "Déclencher les tours gratuits ou la Pluie d'or", jeu: "machine" },
   { id: "room3", type: "room", objectif: 3, recompense: 1_000, titre: "Jouer 3 parties à une table entre amis", jeu: "room" },
 ];
 

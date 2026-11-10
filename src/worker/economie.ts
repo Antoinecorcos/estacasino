@@ -111,27 +111,26 @@ export async function saisonCourante(db: D1Database): Promise<{ id: number; nom:
 }
 
 /**
- * Enregistre le résultat d'une main (blackjack) ou d'un tour (roulette) dans les statistiques de saison.
- * Les parties en room privée comptent comme les autres.
+ * Enregistre le résultat d'une main (blackjack), d'un tour (roulette) ou d'un lancer (machine à sous)
+ * dans les statistiques de saison. Les parties en room privée comptent comme les autres.
  */
-export async function enregistrerResultat(db: D1Database, joueurId: string, jeu: Jeu, mise: number, rendu: number): Promise<void> {
+export async function enregistrerResultat(db: D1Database, joueurId: string, jeu: Exclude<Jeu, "poker">, mise: number, rendu: number): Promise<void> {
   const saison = await saisonCourante(db);
   if (!saison) return;
   const net = rendu - mise;
-  const bj = jeu === "blackjack";
+  const [parties, gains] =
+    jeu === "blackjack" ? ["mains_bj", "gains_bj"] : jeu === "roulette" ? ["tours_roulette", "gains_roulette"] : ["tours_machine", "gains_machine"];
   await db
     .prepare(
-      `INSERT INTO stats_saison (joueur_id, saison_id, gains_nets, mains, mains_bj, gains_bj, tours_roulette, gains_roulette)
-       VALUES (?1, ?2, ?3, 1, ?4, ?5, ?6, ?7)
+      `INSERT INTO stats_saison (joueur_id, saison_id, gains_nets, mains, ${parties}, ${gains})
+       VALUES (?1, ?2, ?3, 1, 1, ?3)
        ON CONFLICT (joueur_id, saison_id) DO UPDATE SET
          gains_nets = gains_nets + excluded.gains_nets,
          mains = mains + 1,
-         mains_bj = mains_bj + excluded.mains_bj,
-         gains_bj = gains_bj + excluded.gains_bj,
-         tours_roulette = tours_roulette + excluded.tours_roulette,
-         gains_roulette = gains_roulette + excluded.gains_roulette`,
+         ${parties} = ${parties} + 1,
+         ${gains} = ${gains} + excluded.${gains}`,
     )
-    .bind(joueurId, saison.id, net, bj ? 1 : 0, bj ? net : 0, bj ? 0 : 1, bj ? 0 : net)
+    .bind(joueurId, saison.id, net)
     .run();
 }
 

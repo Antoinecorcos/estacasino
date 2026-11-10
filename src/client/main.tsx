@@ -6,6 +6,7 @@ import { Admin } from "./pages/Admin";
 import { Boutique } from "./pages/Boutique";
 import { Classement } from "./pages/Classement";
 import { Lobby } from "./pages/Lobby";
+import { PageMachine } from "./pages/Machine";
 import { Mentions } from "./pages/Mentions";
 import { TablePoker } from "./pages/Poker";
 import { PokerLobby } from "./pages/PokerLobby";
@@ -25,7 +26,7 @@ const PAGES_PUBLIQUES: Record<string, () => React.JSX.Element | null> = {
 };
 
 /** Pages de jeu : plein écran, sans pied de page (la mention « jetons fictifs » est dans la barre du jeu). */
-const PAGE_JEU = /^\/(blackjack|roulette(\/solo)?|room\/[A-Za-z]{5}|poker\/table\/[a-z0-9-]+)$/;
+const PAGE_JEU = /^\/(blackjack|machine|roulette(\/solo)?|room\/[A-Za-z]{5}|poker\/table\/[a-z0-9-]+)$/;
 
 function Contenu() {
   const chemin = useChemin();
@@ -47,6 +48,7 @@ function Contenu() {
   }
   if (chemin === "/") return <Lobby />;
   if (chemin === "/blackjack") return <PageBlackjackSolo />;
+  if (chemin === "/machine") return <PageMachine />;
   if (chemin === "/roulette") return <PageGrandeRoue />;
   if (chemin === "/roulette/solo") return <PageRouletteSolo />;
   if (chemin === "/profil") return <Profil />;

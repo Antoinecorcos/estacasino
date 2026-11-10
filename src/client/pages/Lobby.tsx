@@ -16,6 +16,7 @@ import { BadgeLigue } from "../components/Ligue";
 import { Carte, Page } from "../components/Elements";
 import { Lien, naviguer } from "../router";
 import { useSession } from "../session";
+import { imageSymbole } from "../machine/symboles";
 
 function salutation(): string {
   const h = new Date().getHours();
@@ -186,13 +187,16 @@ export function Lobby() {
                   </div>
                 </div>
               </article>
-            </div>
-            <h2 className="surtitre" style={{ marginTop: 6 }}>Prochainement</h2>
-            <div className="prochainement">
-              <div className="carte-ui bientot-mini" aria-label="Machine à sous, bientôt disponible">
-                <span className="italique">Machine à sous</span>
-                <span className="muet">Une seule machine, très soignée</span>
-              </div>
+              <article className="carte-ui carte-jeu carte-machine">
+                <div className="visuel" aria-hidden="true"><MiniMachine /></div>
+                <div className="corps">
+                  <h3 style={{ fontSize: 26 }}>Les Années folles</h3>
+                  <p className="muet" style={{ fontSize: 14, flex: 1 }}>La machine à sous : 243 voies, tours gratuits à multiplicateur et Pluie d'or avec 4 jackpots.</p>
+                  <div className="boutons-jeu">
+                    <button type="button" className="btn btn-principal" onClick={() => naviguer("/machine")}>Jouer</button>
+                  </div>
+                </div>
+              </article>
             </div>
           </section>
 
@@ -330,5 +334,15 @@ export function Lobby() {
         </div>
       </div>
     </Page>
+  );
+}
+
+/** Vignette du lobby : trois symboles de la machine. */
+function MiniMachine() {
+  const [images] = useState(() => [imageSymbole({ s: "diamant" }, 120), imageSymbole({ s: "wild" }, 120), imageSymbole({ s: "bonus" }, 120)]);
+  return (
+    <div className="mini-machine">
+      {images.map((src, i) => <img key={i} src={src} alt="" width={64} height={64} />)}
+    </div>
   );
 }

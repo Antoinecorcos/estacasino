@@ -31,7 +31,7 @@ export const PALIERS_MISE_MAX = [500, 1_000, 2_000, 5_000, 10_000, 25_000] as co
 export const BLACKJACK_LIMITES_DEFAUT = { min: 100, max: 2_000 };
 export const ROULETTE_LIMITES_DEFAUT = { min: 100, max: 5_000 };
 
-export type Jeu = "blackjack" | "roulette" | "poker";
+export type Jeu = "blackjack" | "roulette" | "poker" | "machine";
 
 // ───── Poker Texas Hold'em (no-limit) ─────
 export const POKER_PLACES = 6;

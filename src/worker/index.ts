@@ -29,7 +29,7 @@ import {
 } from "../shared/regles";
 import { age, fermerSession, joueurConnecte, type JoueurSession, normaliserCodeSecours, nouveauCodeSecours, ouvrirSession } from "./auth";
 import { chaineAleatoire, hacherMotDePasse, sha256, verifierMotDePasse } from "./crypto";
-import { aForfait, crediter, crediterAchatJetons, jourParis, rechargerForfait, saisonCourante, veille } from "./economie";
+import { aForfait, crediter, crediterAchatJetons, debiter, enregistrerResultat, jourParis, rechargerForfait, saisonCourante, veille } from "./economie";
 import { inscriptionRefusee, noterAppareilSiNouveau, noterEmpreintes } from "./empreintes";
 import type { Env } from "./env";
 import { type ConfigRoom, ENTETE_CONFIG, ENTETE_IDENTITE, type Identite } from "./rooms/base";
@@ -37,7 +37,8 @@ import { themeAccessible, trouverTheme } from "../shared/themes";
 import { creerSessionCheckout, type SessionCheckoutTerminee, verifierSignatureWebhook } from "./stripe";
 
 import { admin } from "./admin";
-import { lireDefis } from "./defis";
+import { lireDefis, progresserDefis } from "./defis";
+import { jouerTour, MISES_MACHINE, positionsDe, type Hasard } from "../shared/machine";
 
 export { BlackjackRoom } from "./rooms/blackjack";
 export { RouletteRoom } from "./rooms/roulette";
@@ -400,6 +401,59 @@ app.post("/defis/:defi/recuperer", async (c) => {
   return c.json({ ok: true, recompense: r.recompense, solde });
 });
 
+// ───────────── Machine à sous ─────────────
+
+/** Générateur cryptographique (crypto.getRandomValues), par paquets de 256 tirages. */
+function hasardCrypto(): Hasard {
+  const tampon = new Uint32Array(256);
+  let i = tampon.length;
+  return () => {
+    if (i >= tampon.length) {
+      crypto.getRandomValues(tampon);
+      i = 0;
+    }
+    return tampon[i++] / 4294967296;
+  };
+}
+
+/**
+ * Un lancer : la mise est débitée, tout le tour est tiré sur le serveur (fonctions comprises :
+ * tours gratuits et Pluie d'or), puis le gain est crédité. Le navigateur ne fait que l'animer.
+ */
+app.post("/machine/tourner", async (c) => {
+  const moi = await exigerJoueur(c);
+  if (moi instanceof Response) return moi;
+  const db = c.env.DB;
+  const mise = Number((await corps<{ mise: number }>(c)).mise);
+  if (!(MISES_MACHINE as readonly number[]).includes(mise)) return erreur(c, "Mise invalide.");
+  const saison = await saisonCourante(db);
+  const stats = saison
+    ? await db.prepare("SELECT gains_nets, mains FROM stats_saison WHERE joueur_id = ? AND saison_id = ?").bind(moi.id, saison.id).first<{ gains_nets: number; mains: number }>()
+    : null;
+  const ligue = ligueDe(stats?.gains_nets ?? 0, stats?.mains ?? 0, null);
+  if (mise > ligue.miseMaxRoom) return erreur(c, `Mise maximum en ligue ${ligue.nom} : ${ligue.miseMaxRoom.toLocaleString("fr-FR")} jetons.`);
+
+  const soldeApresMise = await debiter(db, moi.id, mise, "machine", null);
+  if (soldeApresMise === null) return erreur(c, "Solde insuffisant pour cette mise.", 409);
+  const resultat = jouerTour(mise, hasardCrypto());
+  let solde = soldeApresMise;
+  if (resultat.total > 0) solde = (await crediter(db, moi.id, resultat.total, "gain", "machine", null)) ?? solde;
+  await enregistrerResultat(db, moi.id, "machine", mise, resultat.total);
+  let defis: { titre: string; recompense: number }[] = [];
+  try {
+    defis = await progresserDefis(db, moi.id, {
+      tour_ms: 1,
+      gain_ms: resultat.total >= 10 * mise ? 1 : 0,
+      fonction_ms: resultat.libres || resultat.pieces ? 1 : 0,
+    });
+  } catch (e) {
+    console.error("défis", e);
+  }
+  const recharge = await rechargerForfait(db, moi.id);
+  if (recharge !== null) solde = recharge;
+  return c.json({ resultat, soldeApresMise, solde, defis, forfait: recharge !== null, pieces: positionsDe(resultat.base.grille, "piece").length });
+});
+
 // ───────────── Classement ─────────────
 
 app.get("/classement", async (c) => {
@@ -407,7 +461,11 @@ app.get("/classement", async (c) => {
   if (!saison) return c.json({ saison: null, lignes: [] });
   const jeu = c.req.query("jeu");
   const [colGains, colParties] =
-    jeu === "blackjack" ? ["gains_bj", "mains_bj"] : jeu === "roulette" ? ["gains_roulette", "tours_roulette"] : jeu === "poker" ? ["gains_poker", "mains_poker"] : ["gains_nets", "mains"];
+    jeu === "blackjack" ? ["gains_bj", "mains_bj"]
+    : jeu === "roulette" ? ["gains_roulette", "tours_roulette"]
+    : jeu === "poker" ? ["gains_poker", "mains_poker"]
+    : jeu === "machine" ? ["gains_machine", "tours_machine"]
+    : ["gains_nets", "mains"];
   const lignes = await c.env.DB.prepare(
     `SELECT j.pseudo, j.avatar, s.${colGains} AS gains, s.${colParties} AS parties
      FROM stats_saison s JOIN joueurs j ON j.id = s.joueur_id
@@ -426,7 +484,7 @@ app.get("/classement", async (c) => {
       gains: l.gains,
       parties: l.parties,
       // La ligue se calcule sur le classement général (gains nets de la saison).
-      ligue: jeu === "blackjack" || jeu === "roulette" || jeu === "poker" ? null : ligueDe(l.gains, l.parties, i + 1).id,
+      ligue: jeu === "blackjack" || jeu === "roulette" || jeu === "poker" || jeu === "machine" ? null : ligueDe(l.gains, l.parties, i + 1).id,
     })),
   });
 });

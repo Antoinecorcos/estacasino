@@ -597,3 +597,180 @@ input[type="range"] { accent-color: var(--accent); }
 .ligne-cliquable { background: none; border: 0; border-bottom: 1px solid var(--ligne); color: inherit; font: inherit; text-align: left; cursor: pointer; width: 100%; }
 .ligne-cliquable:hover { color: var(--accent); }
 @media (max-width: 560px) { .comptes-lies .ligne-admin { grid-template-columns: minmax(0, 1fr) auto; } }
+
+/* ───── Machine à sous « Les Années folles » ───── */
+.ecran-machine { display: flex; flex-direction: column; }
+.mas-cabinet {
+  --or: #e2b85a;
+  position: relative; isolation: isolate; margin: 4px auto 16px; width: 100%; max-width: 980px;
+  padding: 24px clamp(10px, 2.4vw, 26px) clamp(12px, 1.6vw, 16px);
+  border-radius: 28px 28px 22px 22px;
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(226, 184, 90, 0.16), transparent 60%),
+    linear-gradient(180deg, #17120b, #0c0a07 40%, #100c07);
+  border: 2px solid #8a6420;
+  box-shadow: 0 0 0 5px #120d06, 0 0 0 7px rgba(226, 184, 90, 0.55), 0 30px 80px rgba(0, 0, 0, 0.6), inset 0 0 60px rgba(0, 0, 0, 0.7);
+  display: flex; flex-direction: column; gap: 8px;
+  transition: box-shadow 0.6s ease;
+}
+.mas-cabinet.mode-libres { box-shadow: 0 0 0 5px #160710, 0 0 0 7px rgba(255, 111, 216, 0.6), 0 0 60px rgba(192, 79, 176, 0.45), inset 0 0 60px rgba(0, 0, 0, 0.7); }
+.mas-cabinet.mode-pieces { box-shadow: 0 0 0 5px #120d06, 0 0 0 7px #f6dc82, 0 0 70px rgba(255, 200, 80, 0.5), inset 0 0 60px rgba(0, 0, 0, 0.7); }
+
+.mas-lumieres { position: absolute; left: 22px; right: 22px; top: 8px; display: flex; justify-content: space-between; pointer-events: none; }
+.mas-lumieres i { width: 8px; height: 8px; border-radius: 50%; background: #5a4520; box-shadow: none; animation: mas-ampoule 0.72s steps(1) infinite; }
+@keyframes mas-ampoule { 0%, 49% { background: #fff1b8; box-shadow: 0 0 8px 2px rgba(255, 214, 110, 0.9); } 50%, 100% { background: #5a4520; box-shadow: none; } }
+.mas-cabinet.fete .mas-lumieres i { animation-duration: 0.2s; }
+.mas-cabinet.mode-libres .mas-lumieres i { animation-name: mas-ampoule-rose; }
+@keyframes mas-ampoule-rose { 0%, 49% { background: #ffd0f4; box-shadow: 0 0 8px 2px rgba(255, 111, 216, 0.9); } 50%, 100% { background: #4a1840; box-shadow: none; } }
+
+.mas-fronton { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.mas-nom {
+  display: flex; align-items: center; gap: 14px; font-family: var(--titre); font-style: italic; font-weight: 600;
+  font-size: clamp(26px, 4vw, 40px); line-height: 1; letter-spacing: 0.01em;
+  background: linear-gradient(180deg, #fff6d2, #f3d58a 35%, #c99a3e 60%, #f6dc82); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 0 #3a2508) drop-shadow(0 0 18px rgba(255, 200, 80, 0.35));
+}
+.mas-eventail { width: clamp(28px, 6vw, 60px); height: clamp(14px, 3vw, 30px); background: repeating-conic-gradient(from -90deg at 50% 100%, var(--or) 0 4deg, transparent 4deg 12deg); -webkit-mask: radial-gradient(circle at 50% 100%, #000 70%, transparent 71%); mask: radial-gradient(circle at 50% 100%, #000 70%, transparent 71%); opacity: 0.8; }
+
+.mas-jackpots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.mas-jackpot-plaque {
+  --c: #c04fb0; display: flex; flex-direction: column; align-items: center; padding: 5px 6px; border-radius: 10px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 45%, #0a0806), #0a0806);
+  border: 1.5px solid color-mix(in srgb, var(--c) 70%, #f6dc82); box-shadow: inset 0 0 14px color-mix(in srgb, var(--c) 40%, transparent);
+}
+.mas-jackpot-plaque span { font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: color-mix(in srgb, var(--c) 40%, #fff); }
+.mas-jackpot-plaque b { font-size: clamp(14px, 2.2vw, 19px); color: #fff6d2; text-shadow: 0 0 10px color-mix(in srgb, var(--c) 70%, transparent); }
+.mas-jackpot-plaque.j-grand { --c: #c04fb0; }
+.mas-jackpot-plaque.j-majeur { --c: #e0454f; }
+.mas-jackpot-plaque.j-mineur { --c: #4b8df0; }
+.mas-jackpot-plaque.j-mini { --c: #3fbf8a; }
+.mas-jackpot-plaque.flash { animation: mas-flash 0.28s ease-in-out 9 alternate; }
+@keyframes mas-flash { to { transform: scale(1.08); box-shadow: 0 0 30px 6px var(--c), inset 0 0 20px #fff; background: var(--c); } }
+
+.mas-bandeau {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 10px; min-height: 30px; padding: 4px 12px;
+  border-radius: 999px; background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(226, 184, 90, 0.35);
+  font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-clair);
+}
+.mas-bandeau .sep { color: var(--or); font-size: 9px; }
+.mas-bandeau b { font-size: 18px; color: #fff6d2; }
+.mas-multi { display: inline-block; padding: 1px 10px; border-radius: 999px; background: linear-gradient(180deg, #ff9be8, #a3308f); color: #fff; font-size: 16px; letter-spacing: 0.02em; animation: mas-multi 0.6s cubic-bezier(.2, 1.8, .4, 1) both; box-shadow: 0 0 16px rgba(255, 111, 216, 0.7); }
+@keyframes mas-multi { from { transform: scale(2.4) rotate(-8deg); filter: brightness(2); } }
+.mas-lampes { display: inline-flex; gap: 6px; }
+.mas-lampes i { width: 14px; height: 14px; border-radius: 50%; background: #3a2c12; border: 1px solid #8a6420; }
+.mas-lampes i.allumee { background: radial-gradient(circle at 35% 35%, #fff6d2, #f3c55a 60%, #b5801f); box-shadow: 0 0 12px rgba(255, 210, 100, 0.9); animation: apparition 0.35s cubic-bezier(.2, 1.6, .4, 1) both; }
+
+.mas-fenetre {
+  position: relative; width: 100%; max-width: calc((100dvh - 420px) * 1.7); min-width: min(100%, 300px); margin: 0 auto; aspect-ratio: 5 / 2.95;
+  padding: 6px; border-radius: 18px; background: linear-gradient(180deg, #f6dc82, #8a6420 50%, #f3d58a);
+  box-shadow: 0 0 0 3px #1a1209, 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+.mas-rouleaux { display: block; width: 100%; height: 100%; border-radius: 13px; background: #07080a; }
+
+.mas-pied { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "solde commandes gain"; align-items: center; gap: 12px; }
+.mas-pied .solde { grid-area: solde; }
+.mas-pied .gain { grid-area: gain; }
+.mas-pied .mas-commandes { grid-area: commandes; }
+.mas-compteur { display: flex; flex-direction: column; align-items: center; padding: 6px 8px; border-radius: 12px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(226, 184, 90, 0.25); min-width: 0; }
+.mas-compteur span { font-size: 10px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muet); }
+.mas-compteur b { font-size: clamp(16px, 2.6vw, 22px); color: var(--ivoire); }
+.mas-compteur.gagne { border-color: var(--or); box-shadow: 0 0 18px rgba(255, 200, 80, 0.35); }
+.mas-compteur.gagne b { color: #f6dc82; text-shadow: 0 0 12px rgba(255, 200, 80, 0.7); }
+@media (max-width: 860px) {
+  .mas-pied { grid-template-columns: 1fr 1fr; grid-template-areas: "solde gain" "commandes commandes"; gap: 8px; }
+}
+.mas-commandes { display: flex; align-items: center; justify-content: center; gap: clamp(6px, 1.6vw, 16px); flex-wrap: nowrap; }
+.mas-btn {
+  min-height: 42px; padding: 0 14px; border-radius: 999px; border: 1.5px solid rgba(226, 184, 90, 0.6); background: linear-gradient(180deg, #2a2216, #120e08);
+  color: var(--accent-clair); font-weight: 800; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px;
+}
+.mas-btn:hover:not(:disabled) { border-color: #f6dc82; color: #fff6d2; }
+.mas-btn:disabled { opacity: 0.4; cursor: default; }
+.mas-btn.rond { width: 42px; padding: 0; justify-content: center; font-size: 20px; font-family: var(--titre); text-transform: none; }
+.mas-btn.actif { background: linear-gradient(180deg, #f6dc82, #b5801f); color: #1a1209; border-color: #fff6d2; box-shadow: 0 0 14px rgba(255, 200, 80, 0.5); }
+.mas-btn small { font-size: 12px; }
+.mas-mise { display: flex; align-items: center; gap: 6px; }
+.mas-mise-valeur { display: flex; flex-direction: column; align-items: center; min-width: 76px; }
+.mas-mise-valeur span { font-size: 9px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muet); }
+.mas-mise-valeur b { font-size: 18px; }
+.mas-lancer {
+  flex: none; width: 84px; height: 84px; border-radius: 50%; border: 0; padding: 0; color: #2a1606;
+  background: radial-gradient(circle at 35% 30%, #fff6d2, #f3c55a 35%, #c99a3e 65%, #7a5418);
+  box-shadow: 0 0 0 4px #1a1209, 0 0 0 6px #e2b85a, 0 10px 24px rgba(0, 0, 0, 0.6), 0 0 30px rgba(255, 200, 80, 0.45), inset 0 -6px 12px rgba(90, 50, 5, 0.6);
+  display: flex; align-items: center; justify-content: center; transition: transform 0.12s ease;
+  animation: mas-respire 2.4s ease-in-out infinite;
+}
+.mas-lancer svg { width: 44px; height: 44px; transition: transform 0.3s ease; }
+.mas-lancer:hover { transform: scale(1.05); }
+.mas-lancer:active { transform: scale(0.94); }
+.mas-lancer.tourne { animation: none; }
+.mas-lancer.tourne svg { animation: mas-tourne 0.6s linear infinite; }
+@keyframes mas-tourne { to { transform: rotate(360deg); } }
+@keyframes mas-respire { 50% { box-shadow: 0 0 0 4px #1a1209, 0 0 0 6px #f6dc82, 0 10px 24px rgba(0, 0, 0, 0.6), 0 0 46px rgba(255, 200, 80, 0.75), inset 0 -6px 12px rgba(90, 50, 5, 0.6); } }
+.mas-auto { position: relative; }
+.mas-menu-auto { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 5; display: flex; flex-direction: column; min-width: 140px; padding: 6px; border-radius: 14px; background: #15110b; border: 1px solid var(--or); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); }
+.mas-menu-auto button { padding: 10px 12px; border: 0; border-radius: 10px; background: none; color: var(--ivoire); text-align: left; font-weight: 600; }
+.mas-menu-auto button:hover { background: rgba(226, 184, 90, 0.15); color: #fff6d2; }
+
+.mas-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; border-radius: inherit; }
+.mas-scene { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; border-radius: inherit; pointer-events: none; transition: background 0.35s ease; }
+.mas-scene.active { pointer-events: auto; background: radial-gradient(circle at 50% 45%, rgba(20, 12, 4, 0.62), rgba(0, 0, 0, 0.86)); cursor: pointer; }
+.mas-annonce { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; text-align: center; max-width: 92%; animation: apparition 0.4s ease both; z-index: 5; }
+.mas-annonce.sort { animation: mas-sort 0.35s ease forwards; }
+@keyframes mas-sort { to { opacity: 0; transform: scale(1.15); } }
+.mas-titre {
+  font-family: var(--titre); font-style: italic; font-weight: 600; font-size: clamp(38px, 8vw, 84px); line-height: 1; text-transform: uppercase; letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #fff6d2 10%, #f3c55a 45%, #b5801f 60%, #f6dc82 90%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 3px 0 #3a2508) drop-shadow(0 0 24px rgba(255, 200, 80, 0.6));
+}
+.mas-titre.entre { animation: mas-titre 0.7s cubic-bezier(.2, 1.7, .35, 1) both; }
+@keyframes mas-titre { from { transform: scale(0.2) rotate(-6deg); opacity: 0; filter: brightness(3); } }
+.mas-titre.p-enorme { font-size: clamp(42px, 9vw, 96px); background-image: linear-gradient(180deg, #fff, #ffd36a 35%, #ff7a2e 65%, #ffe08a); }
+.mas-titre.p-epique { font-size: clamp(46px, 10vw, 108px); background-image: linear-gradient(100deg, #ff9be8, #fff6d2, #7fd8ff, #f6dc82, #ff9be8); background-size: 300% 100%; animation: mas-titre 0.7s cubic-bezier(.2, 1.7, .35, 1) both, brille 1.4s linear infinite; }
+.mas-montant { font-family: var(--texte); font-weight: 800; font-size: clamp(34px, 7vw, 72px); font-variant-numeric: tabular-nums; color: #fff6d2; text-shadow: 0 0 20px rgba(255, 200, 80, 0.9), 0 3px 0 #3a2508; }
+.mas-montant.fin { animation: mas-pulse 0.5s ease-in-out infinite alternate; }
+@keyframes mas-pulse { to { transform: scale(1.08); text-shadow: 0 0 40px rgba(255, 220, 120, 1), 0 3px 0 #3a2508; } }
+.mas-sous-titre { font-size: clamp(14px, 2.2vw, 18px); color: var(--ivoire); max-width: 520px; }
+.mas-aide { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muet); animation: mas-clignote 1.2s ease-in-out infinite; min-height: 14px; }
+@keyframes mas-clignote { 50% { opacity: 0.35; } }
+.mas-libres .mas-titre { background-image: linear-gradient(180deg, #fff, #ff9be8 45%, #a3308f 65%, #ffd0f4); filter: drop-shadow(0 3px 0 #2a0626) drop-shadow(0 0 24px rgba(255, 111, 216, 0.7)); }
+.mas-jackpot .mas-titre { font-size: clamp(36px, 7vw, 76px); }
+.mas-jackpot.j-mini .mas-titre { background-image: linear-gradient(180deg, #fff, #7ff0c0 50%, #1f9a6c); }
+.mas-jackpot.j-mineur .mas-titre { background-image: linear-gradient(180deg, #fff, #a9cdff 50%, #3a73da); }
+.mas-jackpot.j-majeur .mas-titre { background-image: linear-gradient(180deg, #fff, #ff9aa2 50%, #d23345); }
+.mas-jackpot.j-grand .mas-titre { background-image: linear-gradient(100deg, #ff9be8, #fff6d2, #7fd8ff, #f6dc82, #ff9be8); background-size: 300% 100%; animation: mas-titre 0.7s cubic-bezier(.2, 1.7, .35, 1) both, brille 1.4s linear infinite; }
+
+.mas-modale { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.75); display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; overflow-y: auto; }
+.mas-modale-corps { width: 100%; max-width: 720px; padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+.mas-gains { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.mas-gain { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--ligne); font-size: 13px; }
+.mas-regle { display: flex; align-items: center; gap: 14px; font-size: 14px; }
+.mas-regle p { margin: 0; }
+
+.page-jeu .ecran-machine .barre-jeu { padding: 6px 0; }
+@media (max-width: 640px) {
+  .mas-cabinet { border-radius: 20px; padding: 20px 8px 10px; gap: 7px; margin-bottom: 8px; }
+  .mas-fenetre { max-width: none; padding: 4px; }
+  .mas-lancer { width: 72px; height: 72px; }
+  .mas-lancer svg { width: 38px; height: 38px; }
+  .mas-btn { min-height: 38px; padding: 0 10px; font-size: 11px; }
+  .mas-btn.rond { width: 38px; }
+  .mas-turbo { width: 38px; padding: 0; justify-content: center; }
+  .mas-turbo .mas-texte { display: none; }
+  .mas-bandeau .long { display: none; }
+  .mas-commandes { gap: 6px; }
+  .mas-compteur { padding: 4px 8px; }
+  .mas-fronton { gap: 6px; }
+  .mas-lumieres { top: 7px; }
+  .mas-mise-valeur { min-width: 54px; }
+  .mas-mise-valeur b { font-size: 15px; }
+  .mas-jackpots { gap: 5px; }
+  .mas-jackpot-plaque span { font-size: 8px; letter-spacing: 0.08em; }
+  .mas-bandeau { font-size: 10px; letter-spacing: 0.06em; }
+  .mas-lumieres { left: 14px; right: 14px; }
+  .mas-lumieres i:nth-child(n + 17) { display: none; }
+}
+.carte-machine .visuel { background: radial-gradient(circle at 50% 40%, #2a1f10, #0c0a07); }
+.mini-machine { display: flex; gap: 4px; padding: 8px 10px; border-radius: 14px; background: #07080a; box-shadow: 0 0 0 3px #8a6420, 0 0 0 5px #1a1209, 0 0 24px rgba(255, 200, 80, 0.3); }
+.mini-machine img { width: 58px; height: 58px; }
+.carte-machine:hover .mini-machine img:nth-child(2) { animation: mas-multi 0.6s cubic-bezier(.2, 1.8, .4, 1); }

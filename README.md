@@ -1,12 +1,13 @@
 # Estacasino
 
-Casino social **100 % fictif** : blackjack, roulette et poker avec des jetons sans valeur, des rooms privées par code de 5 lettres, des classements saisonniers et une boutique payée via Stripe (cosmétiques, packs de jetons et forfait saison).
+Casino social **100 % fictif** : blackjack, roulette, poker et machine à sous avec des jetons sans valeur, des rooms privées par code de 5 lettres, des classements saisonniers et une boutique payée via Stripe (cosmétiques, packs de jetons et forfait saison).
 
 - **Front** : React + Vite (`src/client`)
 - **Serveur** : un Worker Cloudflare avec Hono (`src/worker`)
 - **Temps réel** : Durable Objects, un par room (`src/worker/rooms`)
 - **Base de données** : Cloudflare D1 (`migrations/`)
-- **Règles partagées** : cartes, blackjack, roulette, avatars, boutique (`src/shared`)
+- **Règles partagées** : cartes, blackjack, roulette, poker, machine à sous, avatars, boutique (`src/shared`)
+- **Machine à sous** : mathématiques dans `src/shared/machine.ts` (simulées pour un taux de redistribution d'environ 96 %, voir `machine.test.ts`), rendu et mise en scène dans `src/client/machine/`
 
 Voir aussi `docs/recap-projet.md` (produit) et `docs/architecture.md` (technique).
 

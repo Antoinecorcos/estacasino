@@ -48,6 +48,11 @@ export function Mentions() {
           <strong>Roulette</strong> : roulette européenne (un seul zéro). Plein payé 35 pour 1, douzaines et colonnes 2 pour 1, chances
           simples (rouge, noir, pair, impair, manque, passe) 1 pour 1, perdues sur le zéro.
         </p>
+        <p>
+          <strong>Machine à sous « Les Années folles »</strong> : 5 rouleaux, 3 rangées, 243 voies de gain. Tours gratuits avec
+          multiplicateur croissant (3 BONUS ou plus) et Pluie d'or avec quatre jackpots fixes (6 pièces ou plus). Taux de redistribution
+          théorique d'environ 96 %, gain maximum de 5 000 fois la mise par lancer. La table des gains complète est dans le jeu.
+        </p>
         <p>Tous les tirages sont réalisés sur nos serveurs avec un générateur aléatoire cryptographique.</p>
 
         <h2>Boutique</h2>

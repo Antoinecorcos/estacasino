@@ -92,10 +92,12 @@ Objectif : pouvoir ouvrir à 10-30 amis sans risque de perdre des jetons, d'êtr
 | ⏸ | Fin de saison : après la finalisation du jeu |
 | ⏸ | Boutique tournante : pas pour l'instant |
 | ✅ | Poker Texas Hold'em (v0.5) |
-| ⏭ | Prochaine étape : machine à sous |
+| ✅ | Boutique : packs de jetons (10 000 à 1,99 €, 100 000 à 4,99 €) et forfait saison (2,99 €) ; un compte par appareil |
+| ✅ | Machine à sous « Les Années folles » (v0.6) : 243 voies, tours gratuits à multiplicateur, Pluie d'or et 4 jackpots, ~96 % |
+| ⏭ | Prochaine étape : fin de saison et ouverture de la Saison 1 |
 
 Points du brouillon traités : totaux du blackjack révélés seulement une fois les cartes posées, accessoires à 0,99 €, mises des autres joueurs visibles sur le tapis de roulette, lobby rééquilibré et sans défilement latéral, graphique de saison.
-Points du brouillon en attente de décision : options payantes de jetons de secours (2,99 € et 6,99 €).
+Les options payantes de jetons ont été tranchées : forfait saison et packs de jetons (novembre 2026).
 
 ## Poker (version 0.5)
 
