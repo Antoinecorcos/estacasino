@@ -1,6 +1,6 @@
 # Estacasino
 
-Casino social **100 % fictif** : blackjack et roulette avec des jetons gratuits et sans valeur, des rooms privées par code de 5 lettres, des classements saisonniers et une boutique de cosmétiques (avatars) payée via Stripe.
+Casino social **100 % fictif** : blackjack, roulette et poker avec des jetons sans valeur, des rooms privées par code de 5 lettres, des classements saisonniers et une boutique payée via Stripe (cosmétiques, packs de jetons et forfait saison).
 
 - **Front** : React + Vite (`src/client`)
 - **Serveur** : un Worker Cloudflare avec Hono (`src/worker`)
@@ -120,8 +120,13 @@ npx wrangler d1 execute estacasino --remote --command "INSERT INTO saisons (id, 
 
 Le solde total des joueurs est conservé ; le classement repart de zéro avec la nouvelle saison.
 
+### Comptes multiples
+
+Un seul compte par appareil (cookie technique `esta_appareil`) et au plus 3 inscriptions par adresse IP sur 24 heures. Les empreintes sont hachées. Les appareils déjà utilisés par un administrateur ne sont pas limités, pour les comptes de test. Les réglages sont dans `src/shared/regles.ts` (`COMPTES_PAR_APPAREIL`, `INSCRIPTIONS_PAR_IP_JOUR`). La fiche d'un joueur dans l'admin liste ses **comptes liés** (même appareil ou même IP).
+
 ## Règles du produit à ne jamais casser
 
-- On ne vend **jamais** de jetons, ni directement ni indirectement. La boutique ne vend que des cosmétiques.
-- Aucun code ne relie la table `achats` aux jetons.
+- Les jetons, achetés ou gagnés, n'ont **aucune valeur** : jamais de retrait, de conversion en argent ou en lots, ni de transfert entre joueurs.
+- Les jetons achetés passent uniquement par le webhook Stripe (`crediterAchatJetons`, `forfaits_saison`), crédités une seule fois par session de paiement.
+- Plafond de 5 packs de jetons par 24 heures (`PLAFOND_PACKS_JOUR`).
 - Tous les tirages sont faits sur le serveur (`crypto.getRandomValues`), jamais dans le navigateur.

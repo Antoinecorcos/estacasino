@@ -1,9 +1,10 @@
-import type { Jeu } from "../shared/regles";
+import { FORFAIT_MONTANT, FORFAIT_SEUIL, type Jeu } from "../shared/regles";
 
 // Tous les mouvements de jetons passent par ici et sont inscrits dans `transactions_jetons`.
-// Rappel : aucune fonction de ce fichier n'est appelée par la boutique ou par Stripe.
+// Jetons achetés : type « achat » (pack) ou « forfait » (recharge du forfait saison).
 
-export type TypeTransaction = "depart" | "bonus" | "filet" | "mise" | "gain" | "remboursement" | "defi" | "cave" | "retrait" | "ajustement";
+export type TypeTransaction =
+  | "depart" | "bonus" | "filet" | "mise" | "gain" | "remboursement" | "defi" | "cave" | "retrait" | "ajustement" | "achat" | "forfait";
 
 /** Débite un joueur si son solde le permet. Retourne le nouveau solde, ou null si solde insuffisant. */
 export async function debiter(
@@ -48,6 +49,57 @@ export async function crediter(
 export async function lireSolde(db: D1Database, joueurId: string): Promise<number | null> {
   const l = await db.prepare("SELECT solde FROM joueurs WHERE id = ?").bind(joueurId).first<{ solde: number }>();
   return l?.solde ?? null;
+}
+
+/**
+ * Pack de jetons payé (webhook Stripe). Tout se fait dans une seule transaction D1, et l'indicateur
+ * `jetons_credites` garantit un seul crédit par session Stripe, même si le webhook arrive plusieurs fois.
+ */
+export async function crediterAchatJetons(
+  db: D1Database,
+  a: { joueurId: string; produit: string; jetons: number; centimes: number; session: string },
+): Promise<void> {
+  const now = Date.now();
+  const nonCredite = "EXISTS (SELECT 1 FROM achats WHERE stripe_session = ? AND jetons_credites = 0)";
+  await db.batch([
+    db.prepare("INSERT OR IGNORE INTO achats (joueur_id, produit, montant_centimes, stripe_session, le) VALUES (?, ?, ?, ?, ?)")
+      .bind(a.joueurId, a.produit, a.centimes, a.session, now),
+    db.prepare(`INSERT INTO transactions_jetons (joueur_id, montant, type, jeu, room, le) SELECT ?, ?, 'achat', NULL, ?, ? WHERE ${nonCredite}`)
+      .bind(a.joueurId, a.jetons, a.produit, now, a.session),
+    db.prepare(`UPDATE joueurs SET solde = solde + ? WHERE id = ? AND ${nonCredite}`).bind(a.jetons, a.joueurId, a.session),
+    db.prepare("UPDATE achats SET jetons_credites = 1 WHERE stripe_session = ?").bind(a.session),
+  ]);
+}
+
+/**
+ * Forfait saison : si le joueur l'a pour la saison en cours et que son solde est tombé à zéro
+ * (sous la plus petite mise), il reçoit 2 000 jetons. La condition sur le solde dans l'UPDATE
+ * empêche une double recharge si deux rooms règlent en même temps. Retourne le nouveau solde, ou null.
+ */
+export async function rechargerForfait(db: D1Database, joueurId: string): Promise<number | null> {
+  const saison = await saisonCourante(db);
+  if (!saison) return null;
+  const ligne = await db
+    .prepare(
+      `UPDATE joueurs SET solde = solde + ?1 WHERE id = ?2 AND solde < ?3 AND supprime_le IS NULL
+       AND EXISTS (SELECT 1 FROM forfaits_saison WHERE joueur_id = ?2 AND saison_id = ?4) RETURNING solde`,
+    )
+    .bind(FORFAIT_MONTANT, joueurId, FORFAIT_SEUIL, saison.id)
+    .first<{ solde: number }>();
+  if (!ligne) return null;
+  const now = Date.now();
+  await db.batch([
+    db.prepare("INSERT INTO transactions_jetons (joueur_id, montant, type, le) VALUES (?, ?, 'forfait', ?)").bind(joueurId, FORFAIT_MONTANT, now),
+    db.prepare("UPDATE forfaits_saison SET recharges = recharges + 1 WHERE joueur_id = ? AND saison_id = ?").bind(joueurId, saison.id),
+  ]);
+  return ligne.solde;
+}
+
+/** Le joueur a-t-il le forfait pour la saison en cours ? */
+export async function aForfait(db: D1Database, joueurId: string): Promise<boolean> {
+  const saison = await saisonCourante(db);
+  if (!saison) return false;
+  return Boolean(await db.prepare("SELECT 1 FROM forfaits_saison WHERE joueur_id = ? AND saison_id = ?").bind(joueurId, saison.id).first());
 }
 
 export async function saisonCourante(db: D1Database): Promise<{ id: number; nom: string; debut: number; fin: number } | null> {

@@ -1,11 +1,11 @@
-import type { Produit } from "../shared/boutique";
+import { estJetons, type Produit } from "../shared/boutique";
 import { egaliteConstante, hmacSha256Hex } from "./crypto";
 
 // Intégration Stripe minimale, sans SDK (appels HTTP directs) :
 //  - création d'une session Checkout en paiement unique, TVA incluse dans le prix (tax_behavior=inclusive),
 //    avec Stripe Tax activé (automatic_tax) ;
 //  - vérification de la signature des webhooks.
-// La boutique ne vend que des cosmétiques : rien ici ne touche aux jetons.
+// Les jetons sont crédités par le webhook (voir index.ts), jamais ici.
 
 /** Code fiscal Stripe : « General - Electronically Supplied Services ». */
 const CODE_FISCAL = "txcd_10000000";
@@ -15,6 +15,7 @@ export async function creerSessionCheckout(
   produit: Produit,
   joueur: { id: string; pseudo: string },
   appUrl: string,
+  saisonId: number | null = null,
 ): Promise<{ id: string; url: string }> {
   const f = new URLSearchParams();
   f.set("mode", "payment");
@@ -25,6 +26,7 @@ export async function creerSessionCheckout(
   f.set("metadata[produit]", produit.id);
   f.set("payment_intent_data[metadata][joueur_id]", joueur.id);
   f.set("payment_intent_data[metadata][produit]", produit.id);
+  if (saisonId !== null) f.set("metadata[saison_id]", String(saisonId));
   f.set("automatic_tax[enabled]", "true");
   f.set("billing_address_collection", "auto");
   f.set("locale", "fr");
@@ -33,7 +35,9 @@ export async function creerSessionCheckout(
   f.set("line_items[0][price_data][unit_amount]", String(produit.prixCentimes));
   f.set("line_items[0][price_data][tax_behavior]", "inclusive");
   f.set("line_items[0][price_data][product_data][name]", `Estacasino · ${produit.nom}`);
-  f.set("line_items[0][price_data][product_data][description]", `${produit.description} Cosmétique uniquement, sans jetons.`);
+  f.set("line_items[0][price_data][product_data][description]", estJetons(produit)
+    ? `${produit.description} Jetons fictifs, sans valeur monétaire : ni remboursables, ni convertibles, ni transférables.`
+    : `${produit.description} Cosmétique uniquement.`);
   f.set("line_items[0][price_data][product_data][tax_code]", CODE_FISCAL);
 
   const rep = await fetch("https://api.stripe.com/v1/checkout/sessions", {
@@ -66,5 +70,5 @@ export interface SessionCheckoutTerminee {
   id: string;
   payment_status: string;
   amount_total: number | null;
-  metadata: { joueur_id?: string; produit?: string } | null;
+  metadata: { joueur_id?: string; produit?: string; saison_id?: string } | null;
 }

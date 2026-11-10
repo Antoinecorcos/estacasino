@@ -1,12 +1,12 @@
 import type { ConfigAvatar } from "./avatar";
 import { THEMES } from "./themes";
 
-// Boutique : uniquement des cosmétiques. Prix en centimes, TVA INCLUSE (TTC).
+// Boutique : cosmétiques et jetons. Prix en centimes, TVA INCLUSE (TTC).
 // Côté Stripe, les prix sont créés avec tax_behavior = "inclusive" :
 // le prix affiché est exactement le prix payé, et Stripe Tax calcule la TVA contenue dedans.
-// Aucun produit ne donne de jetons, ni directement ni indirectement.
+// Les jetons achetés restent fictifs : jamais remboursables, convertibles, échangeables ni transférables.
 
-export type TypeProduit = "accessoire" | "avatar" | "pack" | "theme";
+export type TypeProduit = "accessoire" | "avatar" | "pack" | "theme" | "jetons" | "forfait";
 
 export interface Produit {
   id: string;
@@ -18,7 +18,12 @@ export interface Produit {
   apercu: ConfigAvatar; // avatar utilisé pour la vignette
   /** Pour un thème de table : son identifiant (la vignette montre une table). */
   theme?: string;
+  /** Pack de jetons : nombre de jetons crédités. Forfait : jetons crédités à chaque recharge. */
+  jetons?: number;
 }
+
+/** Produits qui créditent des jetons (et non des pièces de collection). */
+export const estJetons = (p: Produit) => p.type === "jetons" || p.type === "forfait";
 
 const base: ConfigAvatar = { peau: "p2", couleurCheveux: "brun", cheveux: "court", tenue: "col_roule", accessoire: "aucun", fond: "ardoise" };
 
@@ -71,7 +76,41 @@ export const AVATARS_PREMIUM: Produit[] = [
   },
 ];
 
+export const PRODUITS_JETONS: Produit[] = [
+  {
+    id: "jetons_10k",
+    type: "jetons",
+    nom: "Pile de 10 000 jetons",
+    description: "10 000 jetons crédités tout de suite sur votre solde.",
+    prixCentimes: 199,
+    pieces: [],
+    apercu: base,
+    jetons: 10_000,
+  },
+  {
+    id: "jetons_100k",
+    type: "jetons",
+    nom: "Coffre de 100 000 jetons",
+    description: "100 000 jetons crédités tout de suite sur votre solde. Dix fois plus pour à peine plus cher.",
+    prixCentimes: 499,
+    pieces: [],
+    apercu: base,
+    jetons: 100_000,
+  },
+  {
+    id: "forfait_saison",
+    type: "forfait",
+    nom: "Forfait saison",
+    description: "Ne restez plus jamais à sec : dès que votre solde tombe à zéro, 2 000 jetons sont crédités automatiquement, autant de fois que nécessaire, jusqu'à la fin de la saison en cours.",
+    prixCentimes: 299,
+    pieces: [],
+    apercu: base,
+    jetons: 2_000,
+  },
+];
+
 export const PRODUITS: Produit[] = [
+  ...PRODUITS_JETONS,
   ...AVATARS_PREMIUM,
   {
     id: "pack_salon",

@@ -11,7 +11,7 @@ Un casino en ligne **100 % fictif**, accessible depuis un navigateur sans instal
 
 ### Positionnement
 - **Ce que c'est** : un jeu social et compétitif dans l'ambiance d'un casino, où le style et la compétition sont le produit.
-- **Ce que ce n'est pas** : un jeu d'argent. On ne mise jamais d'argent, on ne gagne jamais d'argent et on n'achète jamais de jetons.
+- **Ce que ce n'est pas** : un jeu d'argent. On ne gagne jamais d'argent et les jetons, même achetés, n'ont aucune valeur (modèle « social casino », voir la décision de novembre 2026 en section 4).
 
 ### Public cible
 - **Principal** : adultes de 18 à 35 ans qui aiment les soirées poker entre amis, les jeux compétitifs et la personnalisation.
@@ -86,7 +86,9 @@ Même sans argent en jeu, le projet doit éviter d'encourager des comportements 
 ## 4. Économie des jetons
 
 ### Principe
-Les jetons sont gratuits, renouvelés et sans valeur. Ils servent à jouer, pas à acheter. **On ne les obtient qu'en jouant ou en se connectant**, jamais en payant.
+Les jetons sont renouvelés et sans valeur. Ils servent à jouer, pas à acheter.
+
+> **Décision de novembre 2026 : vente de jetons ouverte (modèle social casino).** La boutique vend une pile de 10 000 jetons (1,99 €), un coffre de 100 000 jetons (4,99 €) et un forfait saison (2,99 €) qui crédite 2 000 jetons chaque fois que le solde tombe à zéro, jusqu'à la fin de la saison. Les jetons achetés jouent et comptent au classement comme les autres (choix assumé : l'équité du classement passe après). Garde-fous conservés : aucune conversion en argent ou en lots, aucun transfert entre joueurs, 5 packs au plus par 24 heures, 18 ans et plus. Avant d'encaisser en mode réel : validation par un avocat, accord de Stripe sur ce type de produit, CGV et mentions légales complètes. Les lignes « Vendre des jetons » et « recharges » du tableau ci-dessus ne s'appliquent donc plus.
 
 ### Sources de jetons (montants indicatifs à équilibrer en test)
 | Source | Montant proposé | Conditions |

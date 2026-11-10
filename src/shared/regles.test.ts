@@ -3,7 +3,7 @@ import { estBlackjack, peutSeparer, reglerMain, valeurMain } from "./blackjack";
 import { type Carte, nouveauSabot } from "./cartes";
 import { definitionMise, miseGagnante, rendreMise } from "./roulette";
 import { validerAvatar, AVATARS_DEPART } from "./avatar";
-import { PRODUITS } from "./boutique";
+import { estJetons, PRODUITS, PRODUITS_JETONS } from "./boutique";
 
 const m = (...rs: string[]): Carte[] => rs.map((r) => ({ r: r as Carte["r"], c: "S" }));
 
@@ -69,11 +69,18 @@ describe("avatars et boutique", () => {
     for (const a of AVATARS_DEPART) expect(validerAvatar(a.config, () => false)).not.toBeNull();
   });
   it("chaque produit ne débloque que des pièces payantes et l'aperçu est valide une fois acheté", () => {
-    for (const p of PRODUITS) {
+    for (const p of PRODUITS.filter((x) => !estJetons(x))) {
       expect(p.pieces.length).toBeGreaterThan(0);
       if (p.type === "theme") expect(p.pieces).toEqual([`theme:${p.theme}`]);
       else expect(validerAvatar(p.apercu, (cle) => p.pieces.includes(cle))).not.toBeNull();
     }
+  });
+  it("les offres de jetons ont les bons prix et ne débloquent aucune pièce", () => {
+    const offre = (id: string) => PRODUITS_JETONS.find((p) => p.id === id);
+    expect(offre("jetons_10k")).toMatchObject({ jetons: 10_000, prixCentimes: 199, pieces: [] });
+    expect(offre("jetons_100k")).toMatchObject({ jetons: 100_000, prixCentimes: 499, pieces: [] });
+    expect(offre("forfait_saison")).toMatchObject({ type: "forfait", jetons: 2_000, prixCentimes: 299, pieces: [] });
+    expect(new Set(PRODUITS.map((p) => p.id)).size).toBe(PRODUITS.length);
   });
 });
 

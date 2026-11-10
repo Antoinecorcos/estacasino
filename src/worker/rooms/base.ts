@@ -2,7 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import type { ConfigAvatar } from "../../shared/avatar";
 import { type MessageCommun, type MessageServeur, REACTIONS } from "../../shared/protocole";
 import { type Jeu, ROOM_VIDE_FERMETURE_MS } from "../../shared/regles";
-import { crediter, lireSolde } from "../economie";
+import { crediter, lireSolde, rechargerForfait } from "../economie";
 import type { Env } from "../env";
 
 // Base commune des rooms (blackjack et roulette). Chaque room est un Durable Object unique :
@@ -69,9 +69,13 @@ export abstract class RoomBase<Etat, MessageClient> extends DurableObject<Env> {
     else await this.ctx.storage.delete(`en-jeu:${joueurId}`);
   }
 
-  /** La main ou le tour du joueur est réglé : plus rien n'est en jeu pour lui. */
-  protected async solderEnJeu(joueurId: string): Promise<void> {
+  /**
+   * La main ou le tour du joueur est réglé : plus rien n'est en jeu pour lui.
+   * S'il est à zéro et a le forfait saison, il est rechargé : retourne alors son nouveau solde.
+   */
+  protected async solderEnJeu(joueurId: string): Promise<number | null> {
     await this.ctx.storage.delete(`en-jeu:${joueurId}`);
+    return rechargerForfait(this.env.DB, joueurId);
   }
 
   private async rembourserOrphelines(): Promise<void> {
@@ -105,7 +109,8 @@ export abstract class RoomBase<Etat, MessageClient> extends DurableObject<Env> {
     const config = JSON.parse(decodeURIComponent(req.headers.get(ENTETE_CONFIG) ?? "")) as ConfigRoom;
     if (!this.config) this.config = config;
     // Solde relu ici : un remboursement a pu avoir lieu au démarrage de la room.
-    ident.solde = (await lireSolde(this.env.DB, ident.id)) ?? ident.solde;
+    // Un joueur à zéro qui a le forfait saison est rechargé dès son arrivée.
+    ident.solde = (await rechargerForfait(this.env.DB, ident.id)) ?? (await lireSolde(this.env.DB, ident.id)) ?? ident.solde;
 
     const paire = new WebSocketPair();
     const [client, serveur] = [paire[0], paire[1]];

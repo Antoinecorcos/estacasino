@@ -15,7 +15,7 @@ Worker « estacasino » (Hono) ───► Durable Objects
 
 - **Un seul Worker** sert le site, l'API et les WebSockets. Déploiement automatique depuis GitHub.
 - **Durable Objects** : chaque room détient l'état de la partie et les connexions. Tout le hasard et toute la logique s'y exécutent (`crypto.getRandomValues`, sans biais de modulo). Les actions d'une room passent par une file : jamais deux à la fois.
-- **D1** : chaque mouvement de jetons est écrit dans `transactions_jetons` (départ, bonus, filet, mise, gain, remboursement).
+- **D1** : chaque mouvement de jetons est écrit dans `transactions_jetons` (départ, bonus, filet, mise, gain, remboursement, achat, forfait…). Les jetons achetés ne sont crédités que par le webhook Stripe, une fois par session de paiement (`achats.jetons_credites`). Le forfait saison (`forfaits_saison`) recharge le joueur quand une room règle sa main, quand il rejoint une room ou quand il ouvre le site. Les empreintes d’ppareil et d’IP (hachées) sont dans `empreintes`.
 
 ## Jouer seul
 - **Blackjack** : « Jouer seul » ouvre une table privée face au croupier (une instance par joueur).

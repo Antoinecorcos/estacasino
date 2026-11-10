@@ -16,6 +16,7 @@ import {
   FILET_MONTANT,
   FILET_SEUIL,
   type Jeu,
+  PLAFOND_PACKS_JOUR,
   MDP_MIN,
   PALIERS_MISE_MAX,
   PALIERS_MISE_MIN,
@@ -28,7 +29,8 @@ import {
 } from "../shared/regles";
 import { age, fermerSession, joueurConnecte, type JoueurSession, normaliserCodeSecours, nouveauCodeSecours, ouvrirSession } from "./auth";
 import { chaineAleatoire, hacherMotDePasse, sha256, verifierMotDePasse } from "./crypto";
-import { crediter, jourParis, saisonCourante, veille } from "./economie";
+import { aForfait, crediter, crediterAchatJetons, jourParis, rechargerForfait, saisonCourante, veille } from "./economie";
+import { inscriptionRefusee, noterAppareilSiNouveau, noterEmpreintes } from "./empreintes";
 import type { Env } from "./env";
 import { type ConfigRoom, ENTETE_CONFIG, ENTETE_IDENTITE, type Identite } from "./rooms/base";
 import { themeAccessible, trouverTheme } from "../shared/themes";
@@ -109,6 +111,8 @@ app.post("/auth/inscription", async (c) => {
 
   const existe = await c.env.DB.prepare("SELECT 1 FROM joueurs WHERE pseudo = ?").bind(pseudo).first();
   if (existe) return erreur(c, "Ce pseudo est déjà pris.", 409);
+  const refus = await inscriptionRefusee(c);
+  if (refus) return erreur(c, refus, 403);
 
   const id = crypto.randomUUID();
   const codeSecours = nouveauCodeSecours();
@@ -123,6 +127,7 @@ app.post("/auth/inscription", async (c) => {
   } catch {
     return erreur(c, "Ce pseudo est déjà pris.", 409);
   }
+  await noterEmpreintes(c, id, true);
   await ouvrirSession(c, id);
   return c.json({ ok: true, codeSecours });
 });
@@ -153,6 +158,7 @@ app.post("/auth/connexion", async (c) => {
     return erreur(c, "Pseudo ou mot de passe incorrect.", 401);
   }
   if (j.suspendu) return erreur(c, `Ce compte est suspendu${j.suspendu_motif ? ` : ${j.suspendu_motif.replace(/[.\s]+$/, "")}.` : "."} Contactez l'équipe Estacasino.`, 403);
+  await noterEmpreintes(c, j.id);
   await ouvrirSession(c, j.id);
   return c.json({ ok: true });
 });
@@ -261,6 +267,11 @@ async function situationSaison(db: D1Database, joueurId: string) {
 app.get("/moi", async (c) => {
   const moi = await exigerJoueur(c);
   if (moi instanceof Response) return moi;
+  await noterAppareilSiNouveau(c, moi.id);
+  // Forfait saison : un joueur resté à zéro hors des tables est rechargé à son retour.
+  const recharge = await rechargerForfait(c.env.DB, moi.id);
+  if (recharge !== null) moi.solde = recharge;
+  const forfait = await aForfait(c.env.DB, moi.id);
   const j = await c.env.DB.prepare("SELECT bonus_dernier, bonus_serie, filet_dernier, theme FROM joueurs WHERE id = ?")
     .bind(moi.id)
     .first<{ bonus_dernier: string | null; bonus_serie: number; filet_dernier: number | null; theme: string }>();
@@ -284,6 +295,7 @@ app.get("/moi", async (c) => {
     ligue: { id: ligue.id, nom: ligue.nom, suivante: suivante ? { id: suivante.id, nom: suivante.nom, seuil: suivante.seuil } : null },
     bonus: { disponible: bonusDispo, montant: montantBonus(serieSuivante), serie: bonusDispo ? serieSuivante : (j?.bonus_serie ?? 1) },
     filet: { seuil: FILET_SEUIL, montant: FILET_MONTANT, disponible: moi.solde < FILET_SEUIL && Date.now() >= filetProchain, prochain: filetProchain },
+    forfait,
   });
 });
 
@@ -599,9 +611,15 @@ app.get("/boutique", async (c) => {
   const possede = moi
     ? new Set((await c.env.DB.prepare("SELECT piece FROM inventaire WHERE joueur_id = ?").bind(moi.id).all<{ piece: string }>()).results.map((x) => x.piece))
     : new Set<string>();
+  const forfait = moi ? await aForfait(c.env.DB, moi.id) : false;
+  const saison = await saisonCourante(c.env.DB);
   return c.json({
     paiementActif: Boolean(c.env.STRIPE_SECRET_KEY),
-    produits: PRODUITS.map((p) => ({ ...p, possede: p.pieces.every((x) => possede.has(x)) })),
+    saison: saison ? { nom: saison.nom } : null,
+    produits: PRODUITS.map((p) => ({
+      ...p,
+      possede: p.type === "forfait" ? forfait : p.type === "jetons" ? false : p.pieces.every((x) => possede.has(x)),
+    })),
   });
 });
 
@@ -613,12 +631,27 @@ app.post("/boutique/checkout", async (c) => {
   const produit = trouverProduit(b.produit ?? "");
   if (!produit) return erreur(c, "Produit inconnu.", 404);
   if (b.renonciation !== true) return erreur(c, "Veuillez confirmer la livraison immédiate du contenu numérique.");
-  const possede = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM inventaire WHERE joueur_id = ? AND piece IN (${produit.pieces.map(() => "?").join(",")})`)
-    .bind(moi.id, ...produit.pieces)
-    .first<{ n: number }>();
-  if ((possede?.n ?? 0) === produit.pieces.length) return erreur(c, "Vous possédez déjà ce produit.", 409);
+  let saisonId: number | null = null;
+  if (produit.type === "forfait") {
+    const saison = await saisonCourante(c.env.DB);
+    if (!saison) return erreur(c, "Aucune saison n'est en cours.", 409);
+    if (await aForfait(c.env.DB, moi.id)) return erreur(c, "Vous avez déjà le forfait pour cette saison.", 409);
+    saisonId = saison.id;
+  } else if (produit.type === "jetons") {
+    const r = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM achats WHERE joueur_id = ? AND le > ? AND produit IN (${PRODUITS.filter((p) => p.type === "jetons").map(() => "?").join(",")})`,
+    )
+      .bind(moi.id, Date.now() - 24 * 60 * 60 * 1000, ...PRODUITS.filter((p) => p.type === "jetons").map((p) => p.id))
+      .first<{ n: number }>();
+    if ((r?.n ?? 0) >= PLAFOND_PACKS_JOUR) return erreur(c, `Limite atteinte : ${PLAFOND_PACKS_JOUR} packs de jetons par 24 heures. Faites une pause, la table vous attendra.`, 429);
+  } else {
+    const possede = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM inventaire WHERE joueur_id = ? AND piece IN (${produit.pieces.map(() => "?").join(",")})`)
+      .bind(moi.id, ...produit.pieces)
+      .first<{ n: number }>();
+    if ((possede?.n ?? 0) === produit.pieces.length) return erreur(c, "Vous possédez déjà ce produit.", 409);
+  }
   try {
-    const session = await creerSessionCheckout(c.env.STRIPE_SECRET_KEY, produit, moi, c.env.APP_URL);
+    const session = await creerSessionCheckout(c.env.STRIPE_SECRET_KEY, produit, moi, c.env.APP_URL, saisonId);
     return c.json({ url: session.url });
   } catch (e) {
     console.error("stripe", e);
@@ -639,11 +672,26 @@ app.post("/stripe/webhook", async (c) => {
   const produit = trouverProduit(s.metadata?.produit ?? "");
   if (!joueurId || !produit) return c.json({ recu: true });
   const now = Date.now();
-  // Idempotent : la session Stripe est unique dans `achats`, et les pièces déjà possédées sont ignorées.
-  // Un achat ne crédite JAMAIS de jetons.
+  const centimes = s.amount_total ?? produit.prixCentimes;
+  if (produit.type === "jetons") {
+    await crediterAchatJetons(c.env.DB, { joueurId, produit: produit.id, jetons: produit.jetons ?? 0, centimes, session: s.id });
+    return c.json({ recu: true });
+  }
+  if (produit.type === "forfait") {
+    // Le forfait vaut pour la saison en cours au moment du paiement (notée dans la session Stripe).
+    const saisonId = Number(s.metadata?.saison_id) || (await saisonCourante(c.env.DB))?.id;
+    if (!saisonId) return c.json({ recu: true });
+    await c.env.DB.batch([
+      c.env.DB.prepare("INSERT OR IGNORE INTO achats (joueur_id, produit, montant_centimes, stripe_session, le) VALUES (?, ?, ?, ?, ?)").bind(joueurId, produit.id, centimes, s.id, now),
+      c.env.DB.prepare("INSERT OR IGNORE INTO forfaits_saison (joueur_id, saison_id, stripe_session, le) VALUES (?, ?, ?, ?)").bind(joueurId, saisonId, s.id, now),
+    ]);
+    await rechargerForfait(c.env.DB, joueurId); // déjà à zéro au moment de l'achat : recharge immédiate
+    return c.json({ recu: true });
+  }
+  // Cosmétiques. Idempotent : la session Stripe est unique dans `achats`, et les pièces déjà possédées sont ignorées.
   await c.env.DB.batch([
     c.env.DB.prepare("INSERT OR IGNORE INTO achats (joueur_id, produit, montant_centimes, stripe_session, le) VALUES (?, ?, ?, ?, ?)").bind(
-      joueurId, produit.id, s.amount_total ?? produit.prixCentimes, s.id, now,
+      joueurId, produit.id, centimes, s.id, now,
     ),
     ...produit.pieces.map((piece) =>
       c.env.DB.prepare("INSERT OR IGNORE INTO inventaire (joueur_id, piece, origine, le) VALUES (?, ?, 'achat', ?)").bind(joueurId, piece, now),

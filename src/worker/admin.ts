@@ -2,7 +2,8 @@ import { Hono, type Context } from "hono";
 import { lireAvatar } from "../shared/avatar";
 import { joueurConnecte, type JoueurSession } from "./auth";
 import { chaineAleatoire, hacherMotDePasse } from "./crypto";
-import { crediter, debiter, saisonCourante } from "./economie";
+import { aForfait, crediter, debiter, saisonCourante } from "./economie";
+import { comptesLies } from "./empreintes";
 import type { Env } from "./env";
 
 // Espace d'administration : réservé aux comptes dont le rôle est « admin ».
@@ -80,6 +81,8 @@ admin.get("/joueurs/:id", async (c) => {
     achats: achats.results,
     inventaire: inventaire.results,
     sessionsActives: (sessions.results[0] as { n: number }).n,
+    forfait: await aForfait(db, id),
+    comptesLies: await comptesLies(db, id),
   });
 });
 

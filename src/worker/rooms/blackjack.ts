@@ -304,7 +304,8 @@ export class BlackjackRoom extends RoomBase<BjEtat, BjMessageClient> {
         if (rendu > m.mise) gagnants++;
         if (rendu === 0) perdants++;
       }
-      await this.solderEnJeu(j.id);
+      const recharge = await this.solderEnJeu(j.id);
+      if (recharge !== null) j.solde = recharge;
       await this.defisApresMain(j, participants);
     }
     if (!this.remarque || this.phase === "jeu" || this.phase === "croupier") {

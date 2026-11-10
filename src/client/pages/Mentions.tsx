@@ -10,15 +10,23 @@ export function Mentions() {
 
         <h2>Des jetons sans valeur</h2>
         <p>
-          Estacasino est un jeu social. Les jetons sont <strong>fictifs et n'ont aucune valeur monétaire</strong>. Ils ne peuvent pas être
-          achetés, vendus, échangés, transférés entre joueurs, ni convertis en argent, en cadeaux ou en lots. On ne mise jamais d'argent et
-          on ne gagne jamais d'argent.
+          Estacasino est un jeu social. Les jetons sont <strong>fictifs et n'ont aucune valeur monétaire</strong>, y compris ceux obtenus
+          dans la boutique. Ils ne peuvent pas être revendus, échangés, transférés entre joueurs, remboursés, ni convertis en argent, en
+          cadeaux ou en lots. On ne gagne jamais d'argent.
         </p>
         <ul>
           <li>Capital de départ : 10 000 jetons.</li>
           <li>Bonus quotidien : 2 000 jetons, plus 200 par jour consécutif (jusqu'à +3 000).</li>
           <li>Filet de sécurité : 2 000 jetons si votre solde passe sous 500, au plus une fois toutes les 4 heures.</li>
         </ul>
+
+        <h2>Un compte par personne</h2>
+        <p>
+          Chaque joueur n'a qu'un seul compte. Pour éviter les comptes créés en série, nous gardons une empreinte <strong>hachée</strong>{" "}
+          (illisible) de votre appareil, grâce à un cookie technique, et de votre adresse IP. Un seul compte peut être créé par appareil, et
+          un nombre limité par connexion et par jour. Les empreintes d'adresse IP sont effacées après 90 jours ; celle de l'appareil d'un
+          compte supprimé est conservée un an, puis effacée. L'équipe peut suspendre les comptes multiples.
+        </p>
 
         <h2>Réservé aux adultes</h2>
         <p>L'accès est réservé aux personnes de 18 ans et plus. La date de naissance est demandée à l'inscription.</p>
@@ -44,8 +52,10 @@ export function Mentions() {
 
         <h2>Boutique</h2>
         <p>
-          La boutique vend uniquement des cosmétiques (avatars et accessoires). Aucun achat ne donne de jetons ni d'avantage en jeu. Les
-          prix sont affichés TTC. Le paiement est traité par Stripe. Les contenus numériques étant livrés immédiatement, vous renoncez
+          La boutique vend des cosmétiques (avatars, accessoires, thèmes de table) et des jetons : des packs crédités immédiatement, et un
+          forfait saison qui crédite 2 000 jetons chaque fois que votre solde tombe à zéro, jusqu'à la fin de la saison en cours. Les jetons
+          achetés restent fictifs et sans valeur, comme tous les autres ; ils sont limités à 5 packs par 24 heures. Les prix sont affichés
+          TTC. Le paiement est traité par Stripe. Les contenus numériques étant livrés immédiatement, vous renoncez
           expressément à votre droit de rétractation au moment de l'achat.
         </p>
 

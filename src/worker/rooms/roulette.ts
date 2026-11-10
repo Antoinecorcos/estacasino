@@ -137,7 +137,8 @@ export class RouletteRoom extends RoomBase<RlEtat, RlMessageClient> {
         if (solde !== null) j.solde = solde;
       }
       await enregistrerResultat(this.env.DB, j.id, "roulette", total, rendu);
-      await this.solderEnJeu(j.id);
+      const recharge = await this.solderEnJeu(j.id);
+      if (recharge !== null) j.solde = recharge;
       await this.defisApresTour(j, n, total, rendu, miseurs);
       j.dernier = { mise: total, rendu };
       j.mises = {};

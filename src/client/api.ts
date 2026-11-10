@@ -30,4 +30,6 @@ export interface Moi {
   ligue: { id: string; nom: string; suivante: { id: string; nom: string; seuil: number } | null };
   bonus: { disponible: boolean; montant: number; serie: number };
   filet: { seuil: number; montant: number; disponible: boolean; prochain: number };
+  /** Forfait saison actif : recharge automatique à zéro. */
+  forfait: boolean;
 }

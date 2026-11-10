@@ -309,9 +309,14 @@ export function Lobby() {
                       : `Disponible à ${new Date(moi.filet.prochain).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}.`}
                   </div>
                 </div>
-                <button type="button" className="btn btn-contour btn-petit" disabled={!moi.filet.disponible} onClick={() => void recupererFilet()}>
-                  Récupérer
-                </button>
+                <div className="pile" style={{ gap: 6, alignItems: "flex-end" }}>
+                  <button type="button" className="btn btn-contour btn-petit" disabled={!moi.filet.disponible} onClick={() => void recupererFilet()}>
+                    Récupérer
+                  </button>
+                  {!moi.filet.disponible && !moi.forfait && (
+                    <Lien href="/boutique" style={{ fontSize: 13 }}>Recharger maintenant</Lien>
+                  )}
+                </div>
               </div>
             )}
             {moi.saison && (

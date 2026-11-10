@@ -30,6 +30,8 @@ interface Fiche {
   achats: { produit: string; montant_centimes: number; stripe_session: string; le: number }[];
   inventaire: { piece: string; origine: string; le: number }[];
   sessionsActives: number;
+  forfait: boolean;
+  comptesLies: (LigneJoueur & { via: string })[];
 }
 interface Entree {
   action: string;
@@ -217,7 +219,25 @@ export function Admin() {
                     </div>
                   )}
                   <div className="stat"><span className="surtitre">Série bonus</span><b>{fiche.joueur.bonus_serie} j</b></div>
+                  <div className="stat"><span className="surtitre">Forfait saison</span><b>{fiche.forfait ? "Actif" : "—"}</b></div>
                 </div>
+
+                {fiche.comptesLies.length > 0 && (
+                  <div className="pile comptes-lies" style={{ gap: 6 }}>
+                    <h3 className="surtitre">Comptes liés ({fiche.comptesLies.length})</h3>
+                    <span className="muet" style={{ fontSize: 12 }}>
+                      Même appareil ou même connexion. Une même adresse IP peut être partagée (famille, bureau, réseau mobile) : à croiser avec le reste.
+                    </span>
+                    {fiche.comptesLies.map((l) => (
+                      <button key={l.id} type="button" className="ligne-admin ligne-cliquable" onClick={() => ouvrir(l.id)}>
+                        <span>{l.pseudo}</span>
+                        <span className="badge">{l.via.split(",").map((v) => (v === "ip" ? "IP" : "Appareil")).join(" + ")}</span>
+                        <span className="num">{formatJetons(l.solde)}</span>
+                        <span className="muet">{statut(l)} · {date(l.cree_le)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {!fiche.joueur.supprime_le && (
                   <div className="pile" style={{ gap: 10 }}>

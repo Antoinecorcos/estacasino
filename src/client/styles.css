@@ -593,3 +593,7 @@ input[type="range"] { accent-color: var(--accent); }
 }
 .pile-pot { width: 34px; height: 26px; }
 .ajustement-jetons { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid var(--ligne); border-radius: 12px; }
+.comptes-lies .ligne-admin { grid-template-columns: minmax(0, 1fr) auto auto auto; }
+.ligne-cliquable { background: none; border: 0; border-bottom: 1px solid var(--ligne); color: inherit; font: inherit; text-align: left; cursor: pointer; width: 100%; }
+.ligne-cliquable:hover { color: var(--accent); }
+@media (max-width: 560px) { .comptes-lies .ligne-admin { grid-template-columns: minmax(0, 1fr) auto; } }

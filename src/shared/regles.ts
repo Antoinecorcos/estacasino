@@ -8,6 +8,15 @@ export const BONUS_SERIE_MAX = 3_000;
 export const FILET_SEUIL = 500;
 export const FILET_MONTANT = 2_000;
 export const FILET_DELAI_MS = 4 * 60 * 60 * 1000;
+
+/** Forfait saison : 2 000 jetons crédités dès que le solde tombe à zéro (sous la plus petite mise possible). */
+export const FORFAIT_MONTANT = 2_000;
+export const FORFAIT_SEUIL = 10;
+/** Plafond d'achats de packs de jetons par joueur sur 24 heures glissantes. */
+export const PLAFOND_PACKS_JOUR = 5;
+/** Comptes multiples : comptes par appareil, et inscriptions par adresse IP sur 24 heures. */
+export const COMPTES_PAR_APPAREIL = 1;
+export const INSCRIPTIONS_PAR_IP_JOUR = 3;
 /** Nombre minimum de mains/tours joués dans la saison pour apparaître au classement. */
 export const CLASSEMENT_MIN_PARTIES = 5;
 
