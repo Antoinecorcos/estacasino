@@ -2,7 +2,7 @@ import { Hono, type Context } from "hono";
 import { lireAvatar } from "../shared/avatar";
 import { joueurConnecte, type JoueurSession } from "./auth";
 import { chaineAleatoire, hacherMotDePasse } from "./crypto";
-import { saisonCourante } from "./economie";
+import { crediter, debiter, saisonCourante } from "./economie";
 import type { Env } from "./env";
 
 // Espace d'administration : réservé aux comptes dont le rôle est « admin ».
@@ -92,6 +92,29 @@ admin.post("/joueurs/:id/mdp", async (c) => {
   await c.env.DB.prepare("DELETE FROM sessions WHERE joueur_id = ?").bind(id).run();
   await journaliser(c, "mot_de_passe_provisoire", id);
   return c.json({ ok: true, mdp: provisoire });
+});
+
+/**
+ * Ajustement de jetons par l'équipe (cadeau, geste commercial, correction). Montant positif = crédit,
+ * négatif = retrait. Les jetons restent fictifs et gratuits : aucun lien avec un paiement.
+ * Ils ne comptent pas dans les gains de saison (le classement reste juste).
+ */
+admin.post("/joueurs/:id/jetons", async (c) => {
+  const id = c.req.param("id");
+  const b = (await c.req.json().catch(() => ({}))) as { montant?: number; motif?: string };
+  const montant = Math.trunc(Number(b.montant));
+  const motif = (b.motif ?? "").trim().slice(0, 200);
+  if (!Number.isFinite(montant) || montant === 0 || Math.abs(montant) > 1_000_000) return c.json({ erreur: "Montant invalide (entre -1 000 000 et 1 000 000, hors 0)." }, 400);
+  if (!motif) return c.json({ erreur: "Indiquez un motif : il est gardé dans le journal." }, 400);
+  const j = await c.env.DB.prepare("SELECT id FROM joueurs WHERE id = ? AND supprime_le IS NULL").bind(id).first();
+  if (!j) return c.json({ erreur: "Joueur introuvable." }, 404);
+  const solde =
+    montant > 0
+      ? await crediter(c.env.DB, id, montant, "ajustement", null, null)
+      : await debiter(c.env.DB, id, -montant, null, null, "ajustement");
+  if (solde === null) return c.json({ erreur: "Solde insuffisant pour ce retrait." }, 409);
+  await journaliser(c, montant > 0 ? "credit_jetons" : "retrait_jetons", id, { montant, motif });
+  return c.json({ ok: true, solde });
 });
 
 admin.post("/joueurs/:id/suspendre", async (c) => {

@@ -41,6 +41,8 @@ interface Entree {
 
 const date = (ms: number) => new Date(ms).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
 const LIBELLES_ACTION: Record<string, string> = {
+  credit_jetons: "Jetons ajoutés",
+  retrait_jetons: "Jetons retirés",
   mot_de_passe_provisoire: "Mot de passe provisoire",
   suspension: "Suspension",
   reactivation: "Réactivation",
@@ -61,6 +63,8 @@ export function Admin() {
   const [journal, setJournal] = useState<Entree[]>([]);
   const [provisoire, setProvisoire] = useState<string | null>(null);
   const [motif, setMotif] = useState("");
+  const [montantJetons, setMontantJetons] = useState("");
+  const [motifJetons, setMotifJetons] = useState("");
 
   const chercher = (texte: string) => void api<{ joueurs: LigneJoueur[] }>(`/admin/joueurs?q=${encodeURIComponent(texte)}`).then((r) => setListe(r.joueurs));
   const ouvrir = (id: string) => {
@@ -102,6 +106,25 @@ export function Admin() {
       notifier((e as Error).message, true);
     }
   };
+  const ajusterJetons = async (signe: 1 | -1) => {
+    if (!fiche) return;
+    const montant = signe * Math.abs(Math.trunc(Number(montantJetons)));
+    if (!montant) return notifier("Indiquez un montant.", true);
+    const verbe = signe > 0 ? "Ajouter" : "Retirer";
+    if (!confirm(`${verbe} ${formatJetons(Math.abs(montant))} jetons à ${fiche.joueur.pseudo} ?`)) return;
+    try {
+      const r = await api<{ solde: number }>(`/admin/joueurs/${fiche.joueur.id}/jetons`, { corps: { montant, motif: motifJetons } });
+      notifier(`${signe > 0 ? "Ajouté" : "Retiré"} : ${formatJetons(Math.abs(montant))} jetons. Nouveau solde : ${formatJetons(r.solde)}.`);
+      setMontantJetons("");
+      setMotifJetons("");
+      ouvrir(fiche.joueur.id);
+      chercher(q);
+      recharger();
+    } catch (e) {
+      notifier((e as Error).message, true);
+    }
+  };
+
   const suspendre = async (suspendu: boolean) => {
     if (!fiche) return;
     try {
@@ -210,6 +233,22 @@ export function Admin() {
                           </>
                         ))}
                     </div>
+                    <div className="ajustement-jetons">
+                      <span className="surtitre">Ajouter ou retirer des jetons</span>
+                      <div className="rangee" style={{ gap: 8 }}>
+                        <input
+                          className="input" style={{ height: 36, width: 130 }} inputMode="numeric" placeholder="Montant" aria-label="Montant de jetons"
+                          value={montantJetons} onChange={(e) => setMontantJetons(e.target.value.replace(/[^0-9]/g, ""))}
+                        />
+                        <input
+                          className="input" style={{ height: 36, flex: 1, minWidth: 160 }} placeholder="Motif (gardé dans le journal)" aria-label="Motif"
+                          value={motifJetons} onChange={(e) => setMotifJetons(e.target.value)}
+                        />
+                        <button type="button" className="btn btn-petit btn-principal" disabled={!montantJetons || !motifJetons.trim()} onClick={() => void ajusterJetons(1)}>Ajouter</button>
+                        <button type="button" className="btn btn-petit" disabled={!montantJetons || !motifJetons.trim()} onClick={() => void ajusterJetons(-1)}>Retirer</button>
+                      </div>
+                      <span className="muet" style={{ fontSize: 12 }}>Jetons gratuits, sans effet sur les gains de saison ni le classement.</span>
+                    </div>
                     {provisoire && (
                       <div className="succes">
                         Mot de passe provisoire : <strong className="num" style={{ userSelect: "all" }}>{provisoire}</strong>. Transmettez-le au joueur : il ne sera plus affiché.
@@ -262,7 +301,12 @@ export function Admin() {
                 <span>
                   <strong>{e.admin}</strong> · {LIBELLES_ACTION[e.action] ?? e.action}
                   {e.joueur ? ` · ${e.joueur}` : ""}
-                  {e.details ? ` · ${(JSON.parse(e.details) as { motif?: string }).motif ?? ""}` : ""}
+                  {e.details
+                    ? (() => {
+                        const d = JSON.parse(e.details) as { motif?: string; montant?: number };
+                        return `${d.montant ? ` · ${d.montant > 0 ? "+" : ""}${formatJetons(d.montant)}` : ""}${d.motif ? ` · ${d.motif}` : ""}`;
+                      })()
+                    : ""}
                 </span>
                 <span className="muet">{date(e.le)}</span>
               </div>

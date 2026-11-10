@@ -94,7 +94,7 @@ Worker → Settings → Domains & Routes → Add → Custom domain. Pensez à me
 npx wrangler d1 execute estacasino --remote --command "UPDATE joueurs SET role = 'admin' WHERE pseudo = '<pseudo>'"
 ```
 
-L'onglet « Admin » apparaît alors dans l'en-tête (page `/admin`) : chercher un joueur, voir ses jetons et ses achats, lui donner un mot de passe provisoire, suspendre ou réactiver son compte. Chaque action est enregistrée dans un journal.
+L'onglet « Admin » apparaît alors dans l'en-tête (page `/admin`) : chercher un joueur, voir ses jetons et ses achats, **lui ajouter ou retirer des jetons** (motif obligatoire, sans effet sur les gains de saison), lui donner un mot de passe provisoire, suspendre ou réactiver son compte. Chaque action est enregistrée dans un journal.
 
 ### Protection anti-robots (Turnstile)
 
