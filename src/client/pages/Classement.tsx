@@ -41,8 +41,11 @@ export function Classement() {
           <h1 style={{ fontSize: 40 }}>{donnees?.saison ? `« ${donnees.saison.nom} »` : "Classement"}</h1>
           {donnees?.saison && (
             <p className="muet">
-              Du {date(donnees.saison.debut)} au {date(donnees.saison.fin)} · classé sur les gains nets de la saison, à partir de{" "}
-              {donnees.minParties} parties jouées. Les parties en room comptent aussi.
+              {donnees.saison.fin - Date.now() > 300 * 24 * 3600 * 1000
+                ? `Saison de lancement, depuis le ${date(donnees.saison.debut)}`
+                : `Du ${date(donnees.saison.debut)} au ${date(donnees.saison.fin)}`}{" "}
+              · classé sur les gains nets de la saison (défis du jour compris), à partir de {donnees.minParties} parties jouées. Les
+              parties en room comptent aussi.
             </p>
           )}
         </div>
@@ -67,7 +70,7 @@ export function Classement() {
                   <th scope="col">Rang</th>
                   <th scope="col">Joueur</th>
                   <th scope="col" style={{ textAlign: "right" }}>Gains nets</th>
-                  <th scope="col" style={{ textAlign: "right" }}>Parties</th>
+                  <th scope="col" className="col-parties" style={{ textAlign: "right" }}>Parties</th>
                 </tr>
               </thead>
               <tbody>
@@ -77,15 +80,15 @@ export function Classement() {
                     <td>
                       <div className="rangee" style={{ gap: 10, flexWrap: "nowrap" }}>
                         <Avatar config={l.avatar} taille={36} />
-                        <strong>{l.pseudo}</strong>
-                        {l.ligue && <BadgeLigue id={l.ligue} />}
+                        <strong className="pseudo-classement">{l.pseudo}</strong>
+                        {l.ligue && <span className="col-ligue"><BadgeLigue id={l.ligue} /></span>}
                       </div>
                     </td>
                     <td className="num" style={{ textAlign: "right", fontWeight: 700, color: l.gains >= 0 ? "var(--accent)" : "var(--carmin-clair)" }}>
                       {l.gains > 0 ? "+" : ""}
                       {formatJetons(l.gains)}
                     </td>
-                    <td className="num muet" style={{ textAlign: "right" }}>{formatJetons(l.parties)}</td>
+                    <td className="num muet col-parties" style={{ textAlign: "right" }}>{formatJetons(l.parties)}</td>
                   </tr>
                 ))}
               </tbody>

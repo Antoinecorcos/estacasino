@@ -4,6 +4,7 @@ import { MDP_MIN } from "../../shared/regles";
 import { api } from "../api";
 import { Avatar } from "../components/Avatar";
 import { Carte, Page } from "../components/Elements";
+import { MiniMachine, MiniRoue } from "../components/Vignettes";
 import { useTurnstile } from "../components/Turnstile";
 import { Lien, naviguer } from "../router";
 import { useSession } from "../session";
@@ -15,20 +16,20 @@ export function Accueil() {
       <div className="conteneur">
         <section className="hero">
           <div className="pile" style={{ gap: 20 }}>
-            <div className="surtitre">Club de jeu privé · jetons fictifs</div>
+            <div className="surtitre">Casino entre amis · jetons fictifs</div>
             <h1>
               Esta<em className="italique">casino</em>
             </h1>
             <p className="italique accent" style={{ fontSize: 24 }}>
               Jetons sans valeur. Ego, par contre…
             </p>
-            <p style={{ color: "var(--ivoire-2)", fontSize: 17, maxWidth: 520 }}>
-              Blackjack et roulette entre amis ou en solo, avec des jetons gratuits qui ne valent rien, sauf votre place au classement
-              de la saison.
+            <p style={{ color: "var(--ivoire-2)", fontSize: 17, maxWidth: 540 }}>
+              Blackjack, roulette, poker et machine à sous. En solo, ou entre amis avec un simple code de room, et un classement de
+              saison où chaque jeton compte.
             </p>
             <div className="rangee" style={{ gap: 12 }}>
               <Lien href="/inscription" className="btn btn-principal">
-                Prendre place
+                Prendre place · 10 000 jetons offerts
               </Lien>
               <Lien href="/connexion" className="btn">
                 J'ai déjà un compte
@@ -52,19 +53,59 @@ export function Accueil() {
             </div>
           </div>
         </section>
+
+        <section className="vitrine" aria-label="Les jeux">
+          <article className="vitrine-jeu">
+            <div className="vitrine-visuel feutre" aria-hidden="true">
+              <div style={{ transform: "rotate(-8deg) translateY(4px)" }}><Carte carte={{ r: "A", c: "S" }} petite /></div>
+              <div style={{ transform: "rotate(6deg)" }}><Carte carte={{ r: "K", c: "H" }} petite /></div>
+            </div>
+            <h2>Blackjack</h2>
+            <p className="muet">Face au croupier, seul ou jusqu'à 5 à la même table. Blackjack payé 3 pour 2.</p>
+          </article>
+          <article className="vitrine-jeu">
+            <div className="vitrine-visuel feutre" aria-hidden="true"><MiniRoue /></div>
+            <h2>Roulette</h2>
+            <p className="muet">Européenne, un seul zéro. À la Grande Roue, tout le monde mise sur le même tirage.</p>
+          </article>
+          <article className="vitrine-jeu">
+            <div className="vitrine-visuel feutre" aria-hidden="true">
+              <div style={{ transform: "rotate(-8deg) translateY(4px)" }}><Carte carte={{ r: "Q", c: "D" }} petite /></div>
+              <div style={{ transform: "rotate(4deg)" }}><Carte carte={{ r: "Q", c: "S" }} petite /></div>
+            </div>
+            <h2>Poker Hold'em</h2>
+            <p className="muet">De 2 à 6 joueurs, sans limite. Partie libre ou Sit &amp; Go, avec son propre classement.</p>
+          </article>
+          <article className="vitrine-jeu">
+            <div className="vitrine-visuel machine" aria-hidden="true"><MiniMachine /></div>
+            <h2>Les Années folles</h2>
+            <p className="muet">La machine à sous maison : tours gratuits, Pluie d'or et quatre jackpots.</p>
+          </article>
+        </section>
+
         <section className="principes">
           <div className="pile" style={{ gap: 6 }}>
-            <div className="surtitre accent">Des rooms entre amis</div>
-            <p className="muet">Créez une room, donnez le code de 5 lettres, et toute la bande est à table.</p>
+            <div className="surtitre accent">Entre amis</div>
+            <p className="muet">Créez une room, donnez le code de 5 lettres : toute la bande est à table en dix secondes.</p>
           </div>
           <div className="pile" style={{ gap: 6 }}>
-            <div className="surtitre accent">Des saisons</div>
-            <p className="muet">Chaque saison, le classement repart à zéro. Vos jetons, eux, restent à vous.</p>
+            <div className="surtitre accent">Une saison, un classement</div>
+            <p className="muet">Défis du jour, ligues de Bronze à Légende, et un classement qui repart à zéro à chaque saison.</p>
           </div>
           <div className="pile" style={{ gap: 6 }}>
-            <div className="surtitre accent">Rien à gagner</div>
-            <p className="muet">On ne mise jamais d'argent et on n'achète jamais de jetons. On joue pour la gloire.</p>
+            <div className="surtitre accent">Rien à gagner, tout à prouver</div>
+            <p className="muet">Les jetons n'ont aucune valeur et ne se changent jamais en argent. On joue pour la gloire.</p>
           </div>
+          <div className="pile" style={{ gap: 6 }}>
+            <div className="surtitre accent">Dans votre poche</div>
+            <p className="muet">Installez Estacasino sur l'écran d'accueil de votre téléphone, avec un rappel pour le bonus du jour.</p>
+          </div>
+        </section>
+
+        <section className="appel-final">
+          <p className="italique" style={{ fontSize: 26 }}>Le croupier a déjà mélangé.</p>
+          <Lien href="/inscription" className="btn btn-principal">Créer mon compte</Lien>
+          <span className="muet" style={{ fontSize: 13 }}>Gratuit · réservé aux 18 ans et plus · jetons fictifs, sans aucune valeur</span>
         </section>
       </div>
     </main>

@@ -836,3 +836,33 @@ input[type="range"] { accent-color: var(--accent); }
 .invitation-rappels { gap: 12px; border-color: rgba(226, 184, 90, 0.45); }
 .invitation-rappels .rappels-cloche { animation: rappels-sonne 2.6s ease-in-out infinite; transform-origin: 50% 10%; }
 @keyframes rappels-sonne { 0%, 80%, 100% { transform: none; } 84% { transform: rotate(14deg); } 88% { transform: rotate(-12deg); } 92% { transform: rotate(8deg); } 96% { transform: rotate(-4deg); } }
+
+/* ───── Page d'accueil (visiteurs) ───── */
+.vitrine { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; padding: 8px 0 36px; }
+.vitrine-jeu { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 18px; background: var(--encre-2, #121416); border: 1px solid var(--ligne); transition: transform 0.2s ease, border-color 0.2s ease; }
+.vitrine-jeu:hover { transform: translateY(-3px); border-color: rgba(226, 184, 90, 0.5); }
+.vitrine-jeu h2 { font-size: 22px; margin-top: 4px; }
+.vitrine-jeu p { font-size: 14px; margin: 0; }
+.vitrine-visuel { height: 130px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; }
+.vitrine-visuel.feutre { background: var(--feutre); }
+.vitrine-visuel.machine { background: radial-gradient(circle at 50% 40%, #2a1f10, #0c0a07); }
+.vitrine-visuel svg { width: 100px; height: 100px; }
+.vitrine-visuel .mini-machine img { width: 48px; height: 48px; }
+.principes { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.appel-final { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; padding: 28px 0 12px; border-top: 1px solid var(--ligne); }
+@media (max-width: 960px) { .vitrine { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .vitrine { gap: 10px; } .vitrine-jeu { padding: 10px; } .vitrine-visuel { height: 100px; } .vitrine-jeu h2 { font-size: 19px; } .vitrine-jeu p { font-size: 13px; } }
+
+/* Classement sur téléphone : rang, joueur et gains tiennent dans la largeur. */
+@media (max-width: 560px) {
+  .tableau .col-parties { display: none; }
+  .tableau th, .tableau td { padding: 9px 8px; }
+  .tableau .rang { width: 30px; font-size: 18px; }
+  .tableau .pseudo-classement { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34vw; }
+}
+@media (max-width: 400px) { .tableau .col-ligue { display: none; } }
+/* Lobby : les 4 jeux en 2 × 2 (au lieu de 3 + 1), un par ligne sur téléphone. */
+.grille-jeux { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 560px) { .grille-jeux { grid-template-columns: 1fr; } }
+/* Blackjack sur téléphone : la plaque « Vous » déborde sous la table, la remarque du croupier passe dessous. */
+@media (max-width: 700px) { .table-bj + .remarque, .table-bj ~ .remarque { padding-top: 26px; } }

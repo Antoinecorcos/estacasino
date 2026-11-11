@@ -84,7 +84,7 @@ export function Boutique() {
             {donnees?.paiementActif ? "Acheter" : "Bientôt disponible"}
           </button>
         ) : (
-          <Lien href="/connexion" className="btn" style={{ alignSelf: "flex-start" }}>Se connecter pour acheter</Lien>
+          <Lien href="/connexion" className="btn" style={{ alignSelf: "flex-start" }}>Se connecter</Lien>
         )}
       </div>
     </article>

@@ -151,7 +151,9 @@ export function TableBlackjack({ chemin }: { chemin: string }) {
   useEffect(() => {
     if (!pret || !hote.current) return;
     let annule = false;
-    void creerTable3D(hote.current, theme, ["Le blackjack paie 3 pour 2", "Le croupier tire jusqu'à 16 et reste à 17"]).then((t) => {
+    // Sur téléphone, le feutre est trop petit pour le slogan : il chevaucherait les cartes et l'étiquette du croupier.
+    const slogan: [string, string] = innerWidth < 700 ? ["", ""] : ["Le blackjack paie 3 pour 2", "Le croupier tire jusqu'à 16 et reste à 17"];
+    void creerTable3D(hote.current, theme, slogan).then((t) => {
       if (annule) t?.detruire();
       else table3d.current = t;
     });

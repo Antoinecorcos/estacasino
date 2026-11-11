@@ -20,13 +20,6 @@ export function Mentions() {
           <li>Filet de sécurité : 2 000 jetons si votre solde passe sous 500, au plus une fois toutes les 4 heures.</li>
         </ul>
 
-        <h2>Notifications</h2>
-        <p>
-          Sur téléphone, vous pouvez activer deux rappels : votre bonus du jour à 10 h, et votre filet de sécurité quand il est de
-          nouveau disponible. Nous gardons seulement l'adresse technique fournie par votre téléphone pour vous les envoyer. Vous pouvez
-          les couper à tout moment depuis votre profil ou les réglages du téléphone ; elles sont supprimées avec votre compte.
-        </p>
-
         <h2>Un compte par personne</h2>
         <p>
           Chaque joueur n'a qu'un seul compte. Pour éviter les comptes créés en série, nous gardons une empreinte <strong>hachée</strong>{" "}
@@ -57,6 +50,11 @@ export function Mentions() {
           simples (rouge, noir, pair, impair, manque, passe) 1 pour 1, perdues sur le zéro.
         </p>
         <p>
+          <strong>Poker Texas Hold'em</strong> : sans limite, de 2 à 6 joueurs. En partie libre, vous vous asseyez avec une cave prise sur
+          votre solde et repartez avec votre tapis. En Sit &amp; Go, chacun paie la même entrée, reçoit le même tapis de tournoi, les
+          blindes montent régulièrement et les premiers se partagent les entrées. Les résultats du poker ont leur propre classement.
+        </p>
+        <p>
           <strong>Machine à sous « Les Années folles »</strong> : 5 rouleaux, 3 rangées, 243 voies de gain. Tours gratuits avec
           multiplicateur croissant (3 BONUS ou plus) et Pluie d'or avec quatre jackpots fixes (6 pièces ou plus). Taux de redistribution
           théorique d'environ 97 %, gain maximum de 5 000 fois la mise par lancer. La table des gains complète est dans le jeu.
@@ -83,6 +81,13 @@ export function Mentions() {
           Même sans argent en jeu, prenez des pauses. Si le jeu prend trop de place dans votre vie, vous pouvez contacter{" "}
           <a href="https://www.joueurs-info-service.fr" target="_blank" rel="noreferrer">Joueurs Info Service</a> au 09 74 75 13 13 (appel non
           surtaxé).
+        </p>
+
+        <h2>Notifications</h2>
+        <p>
+          Sur téléphone, vous pouvez activer deux rappels : votre bonus du jour à 10 h, et votre filet de sécurité quand il est de
+          nouveau disponible. Nous gardons seulement l'adresse technique fournie par votre téléphone pour vous les envoyer. Vous pouvez
+          les couper à tout moment depuis votre profil ou les réglages du téléphone ; elles sont supprimées avec votre compte.
         </p>
 
         <h2>Données personnelles</h2>
