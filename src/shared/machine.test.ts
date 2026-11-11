@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BANDES_BASE, type Case, evaluerVoies, type Grille, jouerTour, RANGEES, ROULEAUX } from "./machine";
+import { BANDES_BASE, type Case, evaluerVoies, GAINS, type Grille, jouerTour, RANGEES, ROULEAUX } from "./machine";
 
 /** Générateur déterministe pour des tests reproductibles. */
 function graine(n: number) {
@@ -26,7 +26,7 @@ describe("machine à sous", () => {
     ]);
     const gains = evaluerVoies(grille, 100);
     const diamant = gains.find((x) => x.symbole === "diamant")!;
-    expect(diamant).toMatchObject({ longueur: 3, voies: 2, montant: 200 });
+    expect(diamant).toMatchObject({ longueur: 3, voies: 2, montant: GAINS.diamant[0] * 2 });
     // Le trèfle : rouleau 1 (1), wild du rouleau 2 (1), rouleau 3 (1), rouleau 4 : aucun → 3 de long.
     expect(gains.find((x) => x.symbole === "trefle")).toMatchObject({ longueur: 3, voies: 1 });
   });

@@ -7,7 +7,7 @@ Casino social **100 % fictif** : blackjack, roulette, poker et machine à sous a
 - **Temps réel** : Durable Objects, un par room (`src/worker/rooms`)
 - **Base de données** : Cloudflare D1 (`migrations/`)
 - **Règles partagées** : cartes, blackjack, roulette, poker, machine à sous, avatars, boutique (`src/shared`)
-- **Machine à sous** : mathématiques dans `src/shared/machine.ts` (simulées pour un taux de redistribution d'environ 96 %, voir `machine.test.ts`), rendu et mise en scène dans `src/client/machine/`
+- **Machine à sous** : mathématiques dans `src/shared/machine.ts` (simulées pour un taux de redistribution d'environ 97 %, voir `machine.test.ts`), rendu et mise en scène dans `src/client/machine/`
 
 Voir aussi `docs/recap-projet.md` (produit) et `docs/architecture.md` (technique).
 

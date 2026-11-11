@@ -4,8 +4,12 @@
 //
 //  - Gains de gauche à droite sur des rouleaux adjacents, à partir de 3 symboles identiques.
 //  - Le WILD (rouleaux 2 à 4) remplace tous les symboles sauf BONUS et pièces.
-//  - 3, 4 ou 5 BONUS n'importe où : 8, 12 ou 20 tours gratuits avec un multiplicateur qui monte
-//    de 1 à chaque tour gagnant (jusqu'à ×10). 3 BONUS pendant les tours gratuits : +5 tours.
+//  - 3, 4 ou 5 BONUS n'importe où : 6, 9 ou 15 tours gratuits avec un multiplicateur qui monte
+//    de 1 à chaque tour gagnant (jusqu'à ×4). 3 BONUS pendant les tours gratuits : +5 tours.
+//
+// Volatilité réglée en novembre 2026 : environ 68 % de la mise revient par le jeu de base et 30 % par
+// les fonctions (total ≈ 97 %). Avant, 40 % passaient par les fonctions rares, et les joueurs qui ne
+// les touchaient pas perdaient vite (perte médiane de 1 465 jetons sur 40 lancers à 100, 930 désormais).
 //  - 6 pièces ou plus : « Pluie d'or ». Les pièces restent en place, 3 relances, chaque nouvelle
 //    pièce remet le compteur à 3. Valeurs en multiples de la mise, ou jackpots MINI, MINEUR, MAJEUR.
 //    Les 15 cases remplies : jackpot GRAND.
@@ -31,21 +35,21 @@ export const SYMBOLES_PAYANTS: SymbolePayant[] = ["diamant", "cocktail", "chapea
 
 /** Gains par voie, en centièmes de la mise, pour 3, 4 et 5 symboles. */
 export const GAINS: Record<SymbolePayant, [number, number, number]> = {
-  trefle: [25, 60, 150],
-  carreau: [25, 60, 150],
-  coeur: [30, 75, 200],
-  pique: [30, 75, 200],
-  perles: [50, 120, 300],
-  chapeau: [60, 180, 500],
-  cocktail: [80, 250, 750],
-  diamant: [100, 400, 1500],
+  trefle: [35, 80, 180],
+  carreau: [35, 80, 180],
+  coeur: [45, 100, 230],
+  pique: [45, 100, 230],
+  perles: [65, 150, 380],
+  chapeau: [80, 200, 550],
+  cocktail: [100, 300, 900],
+  diamant: [150, 500, 1500],
 };
 
 /** BONUS n'importe où : gain (× mise) et tours gratuits. */
 export const GAINS_BONUS: Record<number, number> = { 3: 2, 4: 10, 5: 50 };
-export const TOURS_GRATUITS: Record<number, number> = { 3: 8, 4: 12, 5: 20 };
+export const TOURS_GRATUITS: Record<number, number> = { 3: 6, 4: 9, 5: 15 };
 export const RELANCE_TOURS = 5;
-export const MULTIPLICATEUR_MAX = 10;
+export const MULTIPLICATEUR_MAX = 4;
 
 export const JACKPOTS: Record<Jackpot, number> = { mini: 20, mineur: 50, majeur: 200, grand: 1000 };
 export const NOMS_JACKPOTS: Record<Jackpot, string> = { mini: "Mini", mineur: "Mineur", majeur: "Majeur", grand: "Grand" };
@@ -74,7 +78,7 @@ const VALEURS_PIECES: { v: number; j?: Jackpot; poids: number }[] = [
 const POIDS_PIECES = VALEURS_PIECES.reduce((a, x) => a + x.poids, 0);
 
 /** Probabilité qu'une case vide reçoive une pièce à chaque relance de la Pluie d'or. */
-export const CHANCE_PIECE_RELANCE = 0.075;
+export const CHANCE_PIECE_RELANCE = 0.04;
 
 export type Hasard = () => number; // [0, 1)
 

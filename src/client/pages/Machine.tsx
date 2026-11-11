@@ -138,6 +138,7 @@ export function PageMachine() {
     majSolde(rep.soldeApresMise);
     await m.raconter(rep.resultat, debut, autoRef.current > 0);
     majSolde(rep.solde);
+    void rafraichir(); // « Gains de saison » de l'en-tête
     for (const d of rep.defis) annoncerDefi(d.titre, d.recompense);
     if (rep.forfait) notifier("Forfait saison : 2 000 jetons crédités sur votre solde.");
     enCoursRef.current = false;
@@ -338,7 +339,7 @@ function TableDesGains({ mise, fermer }: { mise: number; fermer: () => void }) {
           </p>
         </div>
         <p className="muet" style={{ fontSize: 13 }}>
-          Taux de redistribution théorique : environ 96 %. Gain maximum : 5 000 fois la mise par lancer. Tous les tirages sont faits sur
+          Taux de redistribution théorique : environ 97 %. Gain maximum : 5 000 fois la mise par lancer. Tous les tirages sont faits sur
           nos serveurs. Jetons fictifs, sans aucune valeur monétaire. Raccourci : barre d'espace pour lancer ou accélérer.
         </p>
       </div>
