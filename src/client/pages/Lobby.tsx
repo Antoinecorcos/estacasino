@@ -12,6 +12,7 @@ import { api } from "../api";
 import { LIGUES, trouverLigue } from "../../shared/ligues";
 import { ENTREES_SNG, NIVEAUX_POKER } from "../../shared/regles";
 import { DefisDuJour } from "../components/Defis";
+import { InvitationRappels } from "../components/Rappels";
 import { BadgeLigue } from "../components/Ligue";
 import { Carte, Page } from "../components/Elements";
 import { Lien, naviguer } from "../router";
@@ -302,6 +303,7 @@ export function Lobby() {
             </div>
 
             <DefisDuJour />
+            <InvitationRappels />
 
             {moi.solde < moi.filet.seuil && (
               <div className="carte-ui encart" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>

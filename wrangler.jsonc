@@ -17,6 +17,9 @@
     // En local, elle est remplacée par celle du fichier .dev.vars (APP_URL=http://localhost:8787).
     "APP_URL": "https://estacasino.com"
   },
+  // Tâche planifiée : rappels sur téléphone (bonus du jour à 10 h, filet de sécurité). Heures en UTC ;
+  // le Worker regarde lui-même l'heure de Paris, d'où un passage toutes les 15 minutes.
+  "triggers": { "crons": ["*/15 * * * *"] },
   "d1_databases": [
     {
       "binding": "DB",

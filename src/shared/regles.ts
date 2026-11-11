@@ -5,6 +5,10 @@ export const CAPITAL_DEPART = 10_000;
 export const BONUS_QUOTIDIEN = 2_000;
 export const BONUS_SERIE_PAR_JOUR = 200;
 export const BONUS_SERIE_MAX = 3_000;
+/** Bonus quotidien selon la série de jours consécutifs. */
+export function montantBonus(serie: number): number {
+  return BONUS_QUOTIDIEN + Math.min(BONUS_SERIE_PAR_JOUR * (serie - 1), BONUS_SERIE_MAX);
+}
 export const FILET_SEUIL = 500;
 export const FILET_MONTANT = 2_000;
 export const FILET_DELAI_MS = 4 * 60 * 60 * 1000;

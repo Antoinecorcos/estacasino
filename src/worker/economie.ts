@@ -135,6 +135,22 @@ export async function enregistrerResultat(db: D1Database, joueurId: string, jeu:
 }
 
 /**
+ * Défis quotidiens : la récompense compte dans les gains de saison (classement général et ligues),
+ * mais pas comme une partie jouée. Les jetons achetés, le bonus quotidien et le filet n'y comptent pas.
+ */
+export async function enregistrerDefi(db: D1Database, joueurId: string, recompense: number): Promise<void> {
+  const saison = await saisonCourante(db);
+  if (!saison) return;
+  await db
+    .prepare(
+      `INSERT INTO stats_saison (joueur_id, saison_id, gains_nets) VALUES (?1, ?2, ?3)
+       ON CONFLICT (joueur_id, saison_id) DO UPDATE SET gains_nets = gains_nets + excluded.gains_nets`,
+    )
+    .bind(joueurId, saison.id, recompense)
+    .run();
+}
+
+/**
  * Poker : statistiques à part (classement poker). N'affecte pas les gains de saison du classement général.
  * `net` = jetons gagnés ou perdus sur la main (partie libre) ou sur le tournoi (Sit & Go).
  */

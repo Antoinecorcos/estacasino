@@ -10,6 +10,7 @@ import { Page } from "../components/Elements";
 import { Lien, naviguer } from "../router";
 import { useSession } from "../session";
 import { estInstallee, ouvrirTuto, plateforme } from "../installation";
+import { CarteRappels } from "../components/Rappels";
 
 export function Profil() {
   const { moi, rafraichir, notifier } = useSession();
@@ -158,6 +159,8 @@ export function Profil() {
             </span>
           </button>
         )}
+
+        <CarteRappels />
 
         <div className="rangee" style={{ gap: 24, alignItems: "flex-start" }}>
           <form className="carte-ui encart" style={{ flex: "1 1 320px" }} onSubmit={changerMdp}>

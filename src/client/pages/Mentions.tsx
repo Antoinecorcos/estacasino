@@ -20,6 +20,13 @@ export function Mentions() {
           <li>Filet de sécurité : 2 000 jetons si votre solde passe sous 500, au plus une fois toutes les 4 heures.</li>
         </ul>
 
+        <h2>Notifications</h2>
+        <p>
+          Sur téléphone, vous pouvez activer deux rappels : votre bonus du jour à 10 h, et votre filet de sécurité quand il est de
+          nouveau disponible. Nous gardons seulement l'adresse technique fournie par votre téléphone pour vous les envoyer. Vous pouvez
+          les couper à tout moment depuis votre profil ou les réglages du téléphone ; elles sont supprimées avec votre compte.
+        </p>
+
         <h2>Un compte par personne</h2>
         <p>
           Chaque joueur n'a qu'un seul compte. Pour éviter les comptes créés en série, nous gardons une empreinte <strong>hachée</strong>{" "}
@@ -34,8 +41,9 @@ export function Mentions() {
         <h2>Saisons et classement</h2>
         <p>
           Votre <strong>solde total</strong> est conservé d'une saison à l'autre. Le classement repose uniquement sur vos{" "}
-          <strong>gains de la saison</strong> (gains moins mises), remis à zéro au début de chaque saison. Les parties jouées en room
-          privée comptent. Les récompenses de saison sont honorifiques et ne peuvent pas être achetées.
+          <strong>gains de la saison</strong> (gains moins mises, plus les récompenses des défis quotidiens), remis à zéro au début de
+          chaque saison. Le bonus quotidien, le filet de sécurité et les jetons de la boutique n'y comptent pas. Les parties jouées en
+          room privée comptent. Les récompenses de saison sont honorifiques et ne peuvent pas être achetées.
         </p>
 
         <h2>Règles des jeux</h2>

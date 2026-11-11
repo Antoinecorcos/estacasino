@@ -6,15 +6,13 @@ import { verifierPseudo } from "../shared/pseudo";
 import {
   ALPHABET_CODE,
   BLACKJACK_LIMITES_DEFAUT,
-  BONUS_QUOTIDIEN,
-  BONUS_SERIE_MAX,
-  BONUS_SERIE_PAR_JOUR,
   CAPITAL_DEPART,
   CLASSEMENT_MIN_PARTIES,
   CODE_REGEX,
   FILET_DELAI_MS,
   FILET_MONTANT,
   FILET_SEUIL,
+  montantBonus,
   type Jeu,
   PLAFOND_PACKS_JOUR,
   MDP_MIN,
@@ -29,7 +27,7 @@ import {
 } from "../shared/regles";
 import { age, fermerSession, joueurConnecte, type JoueurSession, normaliserCodeSecours, nouveauCodeSecours, ouvrirSession } from "./auth";
 import { chaineAleatoire, hacherMotDePasse, sha256, verifierMotDePasse } from "./crypto";
-import { aForfait, crediter, crediterAchatJetons, debiter, enregistrerResultat, jourParis, rechargerForfait, saisonCourante, veille } from "./economie";
+import { aForfait, crediter, crediterAchatJetons, debiter, enregistrerDefi, enregistrerResultat, jourParis, rechargerForfait, saisonCourante, veille } from "./economie";
 import { inscriptionRefusee, noterAppareilSiNouveau, noterEmpreintes } from "./empreintes";
 import type { Env } from "./env";
 import { type ConfigRoom, ENTETE_CONFIG, ENTETE_IDENTITE, type Identite } from "./rooms/base";
@@ -37,6 +35,7 @@ import { themeAccessible, trouverTheme } from "../shared/themes";
 import { creerSessionCheckout, type SessionCheckoutTerminee, verifierSignatureWebhook } from "./stripe";
 
 import { admin } from "./admin";
+import { notifications, tacheNotifications } from "./notifications";
 import { lireDefis, progresserDefis } from "./defis";
 import { jouerTour, MISES_MACHINE, positionsDe, type Hasard } from "../shared/machine";
 
@@ -223,6 +222,7 @@ app.post("/moi/supprimer", async (c) => {
     db.prepare("DELETE FROM transactions_jetons WHERE joueur_id = ?").bind(moi.id),
     db.prepare("DELETE FROM inventaire WHERE joueur_id = ?").bind(moi.id),
     db.prepare("DELETE FROM defis_jour WHERE joueur_id = ?").bind(moi.id),
+    db.prepare("DELETE FROM abonnements_push WHERE joueur_id = ?").bind(moi.id),
     db.prepare("UPDATE rooms SET ouverte = 0 WHERE hote_id = ?").bind(moi.id),
   ]);
   await fermerSession(c);
@@ -239,9 +239,6 @@ app.post("/moi/code-secours", async (c) => {
 
 // ───────────── Profil, soldes et bonus ─────────────
 
-function montantBonus(serie: number): number {
-  return BONUS_QUOTIDIEN + Math.min(BONUS_SERIE_PAR_JOUR * (serie - 1), BONUS_SERIE_MAX);
-}
 
 /** Gains, parties, rang et ligue du joueur pour la saison en cours. */
 async function situationSaison(db: D1Database, joueurId: string) {
@@ -371,7 +368,7 @@ app.get("/moi/historique", async (c) => {
   const points = [{ t: debut, solde, gains }];
   for (const t of tx) {
     solde += t.montant;
-    if (t.type === "mise" || t.type === "gain" || t.type === "remboursement") gains += t.montant;
+    if (t.type === "mise" || t.type === "gain" || t.type === "remboursement" || t.type === "defi") gains += t.montant;
     points.push({ t: t.le, solde, gains });
   }
   const MAX = 240;
@@ -398,6 +395,7 @@ app.post("/defis/:defi/recuperer", async (c) => {
     .first<{ recompense: number }>();
   if (!r) return erreur(c, "Ce défi n'est pas encore réussi, ou déjà récupéré.", 409);
   const solde = await crediter(c.env.DB, moi.id, r.recompense, "defi", null, null);
+  await enregistrerDefi(c.env.DB, moi.id, r.recompense);
   return c.json({ ok: true, recompense: r.recompense, solde });
 });
 
@@ -759,6 +757,7 @@ app.post("/stripe/webhook", async (c) => {
 });
 
 app.route("/admin", admin);
+app.route("/notifications", notifications);
 
 app.notFound((c) => erreur(c, "Introuvable.", 404));
 app.onError((e, c) => {
@@ -766,4 +765,10 @@ app.onError((e, c) => {
   return erreur(c, "Erreur interne.", 500);
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  /** Tâche planifiée (toutes les 15 minutes) : rappels du bonus du jour et du filet de sécurité. */
+  scheduled(_evenement: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(tacheNotifications(env).then((r) => (r.bonus || r.filet) && console.log("notifications", r)));
+  },
+} satisfies ExportedHandler<Env>;

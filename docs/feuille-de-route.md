@@ -94,6 +94,9 @@ Objectif : pouvoir ouvrir à 10-30 amis sans risque de perdre des jetons, d'êtr
 | ✅ | Poker Texas Hold'em (v0.5) |
 | ✅ | Boutique : packs de jetons (10 000 à 1,99 €, 100 000 à 4,99 €) et forfait saison (2,99 €) ; un compte par appareil |
 | ✅ | Machine à sous « Les Années folles » (v0.6) : 243 voies, tours gratuits à multiplicateur, Pluie d'or et 4 jackpots, ~97 % |
+| ✅ | Application installable (iPhone, Android) avec tutoriel après l'inscription |
+| ✅ | Rappels sur téléphone : bonus du jour à 10 h, filet de sécurité disponible |
+| ✅ | Les récompenses des défis comptent dans les gains de saison (classement général et ligues) |
 | ⏭ | Prochaine étape : fin de saison et ouverture de la Saison 1 |
 
 Points du brouillon traités : totaux du blackjack révélés seulement une fois les cartes posées, accessoires à 0,99 €, mises des autres joueurs visibles sur le tapis de roulette, lobby rééquilibré et sans défilement latéral, graphique de saison.
