@@ -7,6 +7,7 @@ import { Carte, Page } from "../components/Elements";
 import { useTurnstile } from "../components/Turnstile";
 import { Lien, naviguer } from "../router";
 import { useSession } from "../session";
+import { programmerTuto } from "../installation";
 
 export function Accueil() {
   return (
@@ -128,6 +129,7 @@ export function Inscription() {
             code={code}
             suite={() => {
               void rafraichir();
+              programmerTuto(); // une seule fois : « Estacasino sur l'écran d'accueil »
               naviguer("/", true);
             }}
           />

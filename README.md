@@ -121,6 +121,10 @@ npx wrangler d1 execute estacasino --remote --command "INSERT INTO saisons (id, 
 
 Le solde total des joueurs est conservé ; le classement repart de zéro avec la nouvelle saison.
 
+### Application mobile (écran d'accueil)
+
+Le site s'installe comme une application : `public/manifest.webmanifest`, icônes dans `public/icones/`, service worker minimal `public/sw.js` (sans cache, pour toujours charger la dernière version). Juste après la création du compte, un tutoriel s'affiche une seule fois : étapes « Partager → Sur l'écran d'accueil » sur iPhone, bouton « Installer l'application » sur Android (ou les étapes du menu de Chrome), simple astuce « Ctrl + D » sur ordinateur. Sur mobile, le profil propose de le rouvrir. Sur iPhone, l'application installée a sa propre session : on s'y reconnecte une fois.
+
 ### Comptes multiples
 
 Un seul compte par appareil (cookie technique `esta_appareil`) et au plus 3 inscriptions par adresse IP sur 24 heures. Les empreintes sont hachées. Les appareils déjà utilisés par un administrateur ne sont pas limités, pour les comptes de test. Les réglages sont dans `src/shared/regles.ts` (`COMPTES_PAR_APPAREIL`, `INSCRIPTIONS_PAR_IP_JOUR`). La fiche d'un joueur dans l'admin liste ses **comptes liés** (même appareil ou même IP).

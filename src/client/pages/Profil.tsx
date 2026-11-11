@@ -9,6 +9,7 @@ import { GraphiqueSaison } from "../components/GraphiqueSaison";
 import { Page } from "../components/Elements";
 import { Lien, naviguer } from "../router";
 import { useSession } from "../session";
+import { estInstallee, ouvrirTuto, plateforme } from "../installation";
 
 export function Profil() {
   const { moi, rafraichir, notifier } = useSession();
@@ -147,6 +148,16 @@ export function Profil() {
             </div>
           </div>
         </section>
+
+        {plateforme() !== "bureau" && !estInstallee() && (
+          <button type="button" className="carte-ui encart lien-installer" onClick={ouvrirTuto}>
+            <img src="/icones/icone-192.png" alt="" width={44} height={44} />
+            <span className="pile" style={{ gap: 2, textAlign: "left" }}>
+              <b>Installer Estacasino sur votre téléphone</b>
+              <span className="muet" style={{ fontSize: 13 }}>Une icône sur l'écran d'accueil, en plein écran.</span>
+            </span>
+          </button>
+        )}
 
         <div className="rangee" style={{ gap: 24, alignItems: "flex-start" }}>
           <form className="carte-ui encart" style={{ flex: "1 1 320px" }} onSubmit={changerMdp}>

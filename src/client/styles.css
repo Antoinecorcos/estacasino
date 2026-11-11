@@ -774,3 +774,58 @@ input[type="range"] { accent-color: var(--accent); }
 .mini-machine { display: flex; gap: 4px; padding: 8px 10px; border-radius: 14px; background: #07080a; box-shadow: 0 0 0 3px #8a6420, 0 0 0 5px #1a1209, 0 0 24px rgba(255, 200, 80, 0.3); }
 .mini-machine img { width: 58px; height: 58px; }
 .carte-machine:hover .mini-machine img:nth-child(2) { animation: mas-multi 0.6s cubic-bezier(.2, 1.8, .4, 1); }
+
+/* ───── Installation de l'application (tutoriel après l'inscription) ───── */
+.tuto-fond { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.72); display: flex; align-items: flex-end; justify-content: center; animation: tuto-fondu 0.3s ease both; }
+@keyframes tuto-fondu { from { opacity: 0; } }
+.tuto-feuille {
+  width: 100%; max-width: 520px; max-height: calc(100dvh - 40px); overflow-y: auto; margin-bottom: 64px;
+  padding: 14px 20px calc(20px + env(safe-area-inset-bottom)); border-radius: 26px 26px 22px 22px;
+  background: linear-gradient(180deg, #1a150c, #0e0c09 30%); border: 1px solid rgba(226, 184, 90, 0.5);
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px #000; display: flex; flex-direction: column; gap: 16px;
+  animation: tuto-monte 0.45s cubic-bezier(.2, 1.2, .3, 1) both;
+}
+@keyframes tuto-monte { from { transform: translateY(110%); } }
+.tuto-poignee { width: 42px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.2); align-self: center; }
+.tuto-entete { display: flex; align-items: center; gap: 14px; }
+.tuto-entete h2 { font-size: 23px; line-height: 1.15; }
+.tuto-entete p { font-size: 14px; margin: 0; }
+.tuto-icone { border-radius: 15px; flex: none; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(226, 184, 90, 0.4); animation: tuto-icone 2.4s ease-in-out infinite; }
+@keyframes tuto-icone { 50% { transform: translateY(-3px) rotate(-3deg); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6), 0 0 18px rgba(255, 200, 80, 0.45); } }
+.tuto-etapes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.tuto-etape { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--ligne); font-size: 14px; animation: tuto-etape 0.4s ease both; }
+@keyframes tuto-etape { from { opacity: 0; transform: translateY(10px); } }
+.tuto-numero { flex: none; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--titre); font-weight: 600; color: #1a1209; background: radial-gradient(circle at 35% 30%, #fff6d2, #e2b85a 60%, #a3761f); }
+.tuto-pastille { display: inline-flex; vertical-align: middle; padding: 3px; border-radius: 8px; background: rgba(10, 132, 255, 0.16); color: #4da3ff; }
+.tuto-ligne-ios { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-radius: 12px; background: #2c2c2e; color: #fff; font-family: -apple-system, "SF Pro Text", system-ui, sans-serif; font-size: 15px; box-shadow: 0 0 0 2px #4da3ff, 0 0 18px rgba(77, 163, 255, 0.35); animation: tuto-ligne 1.6s ease-in-out infinite; }
+@keyframes tuto-ligne { 50% { box-shadow: 0 0 0 2px #4da3ff, 0 0 4px rgba(77, 163, 255, 0.1); } }
+.tuto-note { margin: 0; font-size: 13px; color: var(--muet); padding: 10px 12px; border-left: 3px solid var(--accent); background: rgba(226, 184, 90, 0.06); border-radius: 0 10px 10px 0; }
+.tuto-installer { min-height: 54px; font-size: 17px; }
+.tuto-fleche { position: fixed; bottom: calc(10px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 34px; color: #f6dc82; text-shadow: 0 0 14px rgba(255, 200, 80, 0.8); animation: tuto-fleche 1s ease-in-out infinite; pointer-events: none; }
+@keyframes tuto-fleche { 50% { transform: translate(-50%, 10px); } }
+@media (min-width: 700px) { .tuto-fond { align-items: center; } .tuto-feuille { margin-bottom: 0; border-radius: 26px; } }
+.tuto-astuce {
+  position: fixed; left: 50%; top: 84px; transform: translateX(-50%); z-index: 45; display: flex; align-items: center; gap: 12px;
+  max-width: calc(100% - 32px); padding: 10px 10px 10px 16px; border-radius: 14px; background: #15110b; border: 1px solid var(--accent);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); font-size: 14px; animation: tuto-etape 0.4s ease both;
+}
+.tuto-astuce kbd { font-family: var(--texte); font-size: 12px; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--ligne-2); background: var(--encre); }
+.tuto-fermer { flex: none; width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: var(--muet); font-size: 20px; line-height: 1; }
+.tuto-fermer:hover { color: var(--ivoire); background: rgba(255, 255, 255, 0.06); }
+.lien-installer { flex-direction: row; align-items: center; gap: 14px; cursor: pointer; color: inherit; font: inherit; text-align: left; width: 100%; }
+.lien-installer img { border-radius: 11px; }
+.lien-installer:hover { border-color: var(--accent); }
+@media (max-width: 699px) {
+  .tuto-feuille { max-height: calc(100dvh - 70px); margin-bottom: 52px; padding: 10px 16px calc(14px + env(safe-area-inset-bottom)); gap: 12px; }
+  .tuto-entete { gap: 12px; }
+  .tuto-entete h2 { font-size: 20px; }
+  .tuto-entete p { font-size: 13px; }
+  .tuto-icone { width: 52px; height: 52px; border-radius: 12px; }
+  .tuto-etapes { gap: 8px; }
+  .tuto-etape { padding: 9px 10px; gap: 10px; font-size: 13px; }
+  .tuto-etape .pile { gap: 5px !important; }
+  .tuto-numero { width: 26px; height: 26px; font-size: 14px; }
+  .tuto-ligne-ios { padding: 8px 12px; font-size: 14px; }
+  .tuto-note { font-size: 12px; padding: 8px 10px; }
+  .tuto-fleche { font-size: 28px; }
+}

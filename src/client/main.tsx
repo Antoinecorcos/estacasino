@@ -1,6 +1,8 @@
 import React, { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Entete, Pied } from "./components/Elements";
+import { TutoInstallation } from "./components/TutoInstallation";
+import { initialiserInstallation } from "./installation";
 import { Accueil, Connexion, Inscription, MotDePasseOublie } from "./pages/Auth";
 import { Admin } from "./pages/Admin";
 import { Boutique } from "./pages/Boutique";
@@ -69,12 +71,15 @@ function Contenu() {
   );
 }
 
+initialiserInstallation();
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <SessionProvider>
       <Entete />
       <Contenu />
       <Pied />
+      <TutoInstallation />
     </SessionProvider>
   </StrictMode>,
 );
