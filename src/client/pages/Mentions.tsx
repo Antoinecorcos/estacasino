@@ -95,7 +95,6 @@ export function Mentions() {
           Nous conservons votre pseudo, votre date de naissance, votre mot de passe sous forme chiffrée, votre historique de jeu et vos
           achats. Aucune adresse e-mail n'est demandée. Vous pouvez supprimer votre compte à tout moment depuis votre profil ; les achats sont alors conservés de façon anonyme, pour les obligations comptables.
         </p>
-        <p className="muet" style={{ fontSize: 13 }}>[ÉDITEUR DU SITE, ADRESSE, HÉBERGEUR : à compléter avant l'ouverture publique.]</p>
       </article>
     </Page>
   );
