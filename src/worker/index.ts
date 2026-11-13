@@ -1,4 +1,5 @@
 import { Hono, type Context } from "hono";
+import { getCookie } from "hono/cookie";
 import { AVATARS_DEPART, lireAvatar, validerAvatar } from "../shared/avatar";
 import { PRODUITS, trouverProduit } from "../shared/boutique";
 import { LIGUES, ligueDe, ligueSuivante } from "../shared/ligues";
@@ -25,7 +26,7 @@ import {
   type NiveauPoker,
   POKER_PLACES,
 } from "../shared/regles";
-import { age, fermerSession, joueurConnecte, type JoueurSession, normaliserCodeSecours, nouveauCodeSecours, ouvrirSession } from "./auth";
+import { age, COOKIE, fermerSession, joueurConnecte, type JoueurSession, normaliserCodeSecours, nouveauCodeSecours, ouvrirSession } from "./auth";
 import { chaineAleatoire, hacherMotDePasse, sha256, verifierMotDePasse } from "./crypto";
 import { aForfait, crediter, crediterAchatJetons, debiter, enregistrerDefi, enregistrerResultat, jourParis, rechargerForfait, saisonCourante, veille } from "./economie";
 import { inscriptionRefusee, noterAppareilSiNouveau, noterEmpreintes } from "./empreintes";
@@ -66,13 +67,47 @@ async function corps<T>(c: C): Promise<Partial<T>> {
 
 const ip = (c: C) => c.req.header("CF-Connecting-IP") ?? "local";
 
+// Tables de jeu (WebSocket) : seules les pages d'Estacasino peuvent s'y connecter. Sans ce contrôle, un autre
+// site ouvert par un joueur connecté pourrait jouer à sa place avec son cookie de session.
+app.use("*", async (c, next) => {
+  const chemin = new URL(c.req.url).pathname;
+  const origine = c.req.header("Origin");
+  if (chemin.endsWith("/ws") && origine) {
+    let memeSite = false;
+    try {
+      memeSite = new URL(origine).host === new URL(c.req.url).host;
+    } catch {
+      /* origine illisible : refusée */
+    }
+    if (!memeSite) return erreur(c, "Connexion refusée.", 403);
+  }
+  return next();
+});
+
+// En-têtes de sécurité des réponses de l'API (ceux des pages sont dans public/_headers).
+app.use("*", async (c, next) => {
+  await next();
+  if (new URL(c.req.url).pathname.endsWith("/ws")) return; // réponse de la table de jeu : laissée telle quelle
+  c.header("X-Content-Type-Options", "nosniff");
+  c.header("X-Frame-Options", "DENY");
+  c.header("Referrer-Policy", "strict-origin-when-cross-origin");
+});
+
 // Limites de débit par adresse IP (les webhooks Stripe et les WebSockets de jeu n'y sont pas soumis).
 app.use("*", async (c, next) => {
   const chemin = new URL(c.req.url).pathname;
   if (chemin === "/api/stripe/webhook" || chemin.endsWith("/ws")) return next();
-  const limite = chemin.startsWith("/api/auth/") ? c.env.LIMITE_AUTH : c.env.LIMITE_API;
-  if (limite && !(await limite.limit({ key: ip(c) })).success)
-    return erreur(c, "Doucement ! Trop de demandes, réessayez dans une minute.", 429);
+  const trop = () => erreur(c, "Doucement ! Trop de demandes, réessayez dans une minute.", 429);
+  // Plafond global par adresse IP, large : tout un Wi-Fi d'école peut partager la même.
+  if (c.env.LIMITE_IP && !(await c.env.LIMITE_IP.limit({ key: ip(c) })).success) return trop();
+  if (chemin.startsWith("/api/auth/")) {
+    if (c.env.LIMITE_AUTH && !(await c.env.LIMITE_AUTH.limit({ key: ip(c) })).success) return trop();
+    return next();
+  }
+  // Reste de l'API : limite par joueur (cookie de session), sinon par adresse IP.
+  const session = getCookie(c, COOKIE);
+  const cle = session && session.length === 64 ? `s:${session.slice(0, 24)}` : `ip:${ip(c)}`;
+  if (c.env.LIMITE_API && !(await c.env.LIMITE_API.limit({ key: cle })).success) return trop();
   return next();
 });
 

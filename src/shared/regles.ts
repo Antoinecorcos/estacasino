@@ -20,7 +20,8 @@ export const FORFAIT_SEUIL = 10;
 export const PLAFOND_PACKS_JOUR = 5;
 /** Comptes multiples : comptes par appareil, et inscriptions par adresse IP sur 24 heures. */
 export const COMPTES_PAR_APPAREIL = 1;
-export const INSCRIPTIONS_PAR_IP_JOUR = 3;
+/** Large : tout un Wi-Fi d'école peut partager la même adresse IP. La vraie barrière est l'appareil. */
+export const INSCRIPTIONS_PAR_IP_JOUR = 50;
 /** Nombre minimum de mains/tours joués dans la saison pour apparaître au classement. */
 export const CLASSEMENT_MIN_PARTIES = 5;
 

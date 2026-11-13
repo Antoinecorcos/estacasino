@@ -6,6 +6,7 @@ export interface Env {
   APP_URL: string;
   LIMITE_AUTH?: RateLimit;
   LIMITE_API?: RateLimit;
+  LIMITE_IP?: RateLimit;
   /** Clé publique Cloudflare Turnstile (anti-robots). Absente : pas de vérification. */
   TURNSTILE_SITE_KEY?: string;
   /** Secret : clé secrète Turnstile. */

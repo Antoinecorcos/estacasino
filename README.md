@@ -111,6 +111,20 @@ npm run reset-password -- <pseudo>
 
 Le script écrit un mot de passe provisoire dans la base en ligne et l'affiche ; transmettez-le au joueur. Ajoutez `--local` pour la base de développement. Plus simple : le bouton « Mot de passe provisoire » de l'espace admin.
 
+### Remettre les classements à zéro (lancement)
+
+```bash
+npm run reinitialiser-classements
+```
+
+Sans option, le script montre seulement ce qu'il ferait (nombre de lignes de classement de la saison en cours). Pour l'exécuter :
+
+```bash
+npm run reinitialiser-classements -- --confirmer
+```
+
+Il efface les statistiques de la saison en cours (classements, ligues, courbe des gains de saison) et fait démarrer la saison maintenant. Les comptes, les soldes, les achats et les cosmétiques ne bougent pas. Ajoutez `--nom "Saison 1"` pour renommer la saison, et `--local` pour la base de développement.
+
 ### Ouvrir une nouvelle saison
 
 Les dates sont des horodatages en millisecondes (UTC). Exemple pour une saison de 6 semaines :
@@ -136,7 +150,7 @@ Deux rappels, à activer par le joueur depuis le lobby ou son profil : le **bonu
 
 ### Comptes multiples
 
-Un seul compte par appareil (cookie technique `esta_appareil`) et au plus 3 inscriptions par adresse IP sur 24 heures. Les empreintes sont hachées. Les appareils déjà utilisés par un administrateur ne sont pas limités, pour les comptes de test. Les réglages sont dans `src/shared/regles.ts` (`COMPTES_PAR_APPAREIL`, `INSCRIPTIONS_PAR_IP_JOUR`). La fiche d'un joueur dans l'admin liste ses **comptes liés** (même appareil ou même IP).
+Un seul compte par appareil (cookie technique `esta_appareil`) et au plus 50 inscriptions par adresse IP sur 24 heures (large, car tout un Wi-Fi d'école partage souvent la même adresse). Les empreintes sont hachées. Les appareils déjà utilisés par un administrateur ne sont pas limités, pour les comptes de test. Les réglages sont dans `src/shared/regles.ts` (`COMPTES_PAR_APPAREIL`, `INSCRIPTIONS_PAR_IP_JOUR`). La fiche d'un joueur dans l'admin liste ses **comptes liés** (même appareil ou même IP).
 
 ## Règles du produit à ne jamais casser
 

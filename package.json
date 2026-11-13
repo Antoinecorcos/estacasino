@@ -13,7 +13,8 @@
     "db:migrate:remote": "wrangler d1 migrations apply estacasino --remote",
     "typecheck": "tsc -p tsconfig.worker.json && tsc -p tsconfig.client.json",
     "test": "vitest run",
-    "reset-password": "node scripts/reset-password.mjs"
+    "reset-password": "node scripts/reset-password.mjs",
+    "reinitialiser-classements": "node scripts/reinitialiser-classements.mjs"
   },
   "dependencies": {
     "hono": "^4.6.0",
