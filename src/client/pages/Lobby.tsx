@@ -314,7 +314,7 @@ export function Lobby() {
               <p className="muet" style={{ fontSize: 13 }}>
                 {finSaison !== null && finSaison <= 120
                   ? `${moi.saison.nom} · fin dans ${finSaison} jour${finSaison === 1 ? "" : "s"}.`
-                  : `${moi.saison.nom} · la saison de lancement. Classé dès ${moi.saison.minParties} parties.`}
+                  : `${moi.saison.nom} · classé dès ${moi.saison.minParties} parties.`}
               </p>
             )}
           </aside>

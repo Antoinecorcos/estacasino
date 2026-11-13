@@ -42,7 +42,7 @@ export function Classement() {
           {donnees?.saison && (
             <p className="muet">
               {donnees.saison.fin - Date.now() > 300 * 24 * 3600 * 1000
-                ? `Saison de lancement, depuis le ${date(donnees.saison.debut)}`
+                ? `Depuis le ${date(donnees.saison.debut)}`
                 : `Du ${date(donnees.saison.debut)} au ${date(donnees.saison.fin)}`}{" "}
               · classé sur les gains nets de la saison (défis du jour compris), à partir de {donnees.minParties} parties jouées. Les
               parties en room comptent aussi.

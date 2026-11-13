@@ -14,7 +14,7 @@
     "typecheck": "tsc -p tsconfig.worker.json && tsc -p tsconfig.client.json",
     "test": "vitest run",
     "reset-password": "node scripts/reset-password.mjs",
-    "reinitialiser-classements": "node scripts/reinitialiser-classements.mjs"
+    "nouvelle-saison": "node scripts/nouvelle-saison.mjs"
   },
   "dependencies": {
     "hono": "^4.6.0",
