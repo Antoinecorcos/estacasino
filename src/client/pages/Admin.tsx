@@ -47,6 +47,7 @@ const LIBELLES_ACTION: Record<string, string> = {
   retrait_jetons: "Jetons retirés",
   mot_de_passe_provisoire: "Mot de passe provisoire",
   suspension: "Suspension",
+  nouvelle_saison: "Nouvelle saison",
   reactivation: "Réactivation",
 };
 
@@ -311,6 +312,8 @@ export function Admin() {
           </section>
         </div>
 
+        <CarteSaison apres={recharger} />
+
         <section className="carte-ui encart">
           <h2 className="surtitre">Journal des actions d'administration</h2>
           {journal.length === 0 ? (
@@ -335,5 +338,89 @@ export function Admin() {
         </section>
       </div>
     </Page>
+  );
+}
+
+interface EtatSaison {
+  courante: { id: number; nom: string; debut: number; fin: number } | null;
+  prochainId: number;
+  joueurs: { n: number; total: number };
+  classes: number;
+  forfaits: number;
+}
+
+/** Passage à une nouvelle saison, avec remise à niveau des soldes en option. */
+function CarteSaison({ apres }: { apres: () => void }) {
+  const { notifier, rafraichir } = useSession();
+  const [etat, setEtat] = useState<EtatSaison | null>(null);
+  const [nom, setNom] = useState("");
+  const [remettre, setRemettre] = useState(true);
+  const [solde, setSolde] = useState("20000");
+  const [fin, setFin] = useState("2027-12-31");
+  const [confirmation, setConfirmation] = useState("");
+  const [envoi, setEnvoi] = useState(false);
+  const charger = () =>
+    void api<EtatSaison>("/admin/saison").then((e) => {
+      setEtat(e);
+      setNom(`Saison ${e.prochainId - 1}`);
+    });
+  useEffect(charger, []);
+  if (!etat) return null;
+
+  const lancer = async () => {
+    setEnvoi(true);
+    try {
+      await api("/admin/saison/nouvelle", { corps: { nom, confirmation, solde: remettre ? Number(solde) : null, fin } });
+      notifier(`« ${nom} » a commencé${remettre ? ` : tous les soldes sont à ${formatJetons(Number(solde))} jetons` : ""}.`);
+      setConfirmation("");
+      charger();
+      apres();
+      await rafraichir();
+    } catch (e) {
+      notifier((e as Error).message, true);
+    } finally {
+      setEnvoi(false);
+    }
+  };
+
+  return (
+    <section className="carte-ui encart carte-saison">
+      <h2 className="surtitre">Saison</h2>
+      <p style={{ margin: 0, fontSize: 14 }}>
+        En cours : <strong>{etat.courante ? `« ${etat.courante.nom} »` : "aucune"}</strong>
+        {etat.courante && <span className="muet"> · depuis le {date(etat.courante.debut)} · {etat.classes} joueur(s) au classement</span>}
+      </p>
+      <div className="rangee" style={{ gap: 10, alignItems: "flex-end" }}>
+        <label className="champ" style={{ flex: "1 1 180px" }}>
+          <span>Nom de la nouvelle saison</span>
+          <input className="input" value={nom} onChange={(e) => setNom(e.target.value)} maxLength={40} />
+        </label>
+        <label className="champ" style={{ flex: "1 1 160px" }}>
+          <span>Fin prévue</span>
+          <input className="input" type="date" value={fin} onChange={(e) => setFin(e.target.value)} />
+        </label>
+      </div>
+      <label className="case">
+        <input type="checkbox" checked={remettre} onChange={(e) => setRemettre(e.target.checked)} />
+        <span>
+          Remettre tous les soldes à{" "}
+          <input className="input" style={{ width: 110, height: 32, display: "inline-block" }} inputMode="numeric" value={solde} onChange={(e) => setSolde(e.target.value.replace(/[^0-9]/g, ""))} disabled={!remettre} />{" "}
+          jetons ({etat.joueurs.n} joueurs, {formatJetons(etat.joueurs.total)} jetons aujourd'hui). Sinon, les soldes sont conservés.
+        </span>
+      </label>
+      <p className="muet" style={{ fontSize: 13, margin: 0 }}>
+        La saison en cours est clôturée maintenant et son classement archivé ; la nouvelle commence avec un classement vide.
+        {etat.forfaits > 0 && ` ${etat.forfaits} forfait(s) saison de la saison en cours expireront.`} À faire quand personne n'est attablé.
+      </p>
+      <div className="rangee" style={{ gap: 10, alignItems: "flex-end" }}>
+        <label className="champ" style={{ flex: "1 1 220px" }}>
+          <span>Pour confirmer, retapez « {nom} »</span>
+          <input className="input" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} autoComplete="off" />
+        </label>
+        <button type="button" className="btn btn-principal" disabled={envoi || !nom.trim() || confirmation.trim() !== nom.trim() || (remettre && !solde)} onClick={() => void lancer()}>
+          {envoi ? "Passage en cours…" : `Passer à « ${nom} »`}
+        </button>
+      </div>
+    </section>
   );
 }

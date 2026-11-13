@@ -134,6 +134,64 @@ admin.post("/joueurs/:id/suspendre", async (c) => {
   return c.json({ ok: true });
 });
 
+// ───────── Saisons ─────────
+
+/** Saison en cours et ce qu'un passage à la suivante changerait. */
+admin.get("/saison", async (c) => {
+  const db = c.env.DB;
+  const courante = await saisonCourante(db);
+  const [prochain, joueurs, classes, forfaits] = await db.batch([
+    db.prepare("SELECT COALESCE(MAX(id), 0) + 1 AS id FROM saisons"),
+    db.prepare("SELECT COUNT(*) AS n, COALESCE(SUM(solde), 0) AS total FROM joueurs WHERE supprime_le IS NULL"),
+    db.prepare("SELECT COUNT(*) AS n FROM stats_saison WHERE saison_id = ?").bind(courante?.id ?? 0),
+    db.prepare("SELECT COUNT(*) AS n FROM forfaits_saison WHERE saison_id = ?").bind(courante?.id ?? 0),
+  ]);
+  const un = <T>(r: D1Result) => r.results[0] as T;
+  return c.json({
+    courante,
+    prochainId: un<{ id: number }>(prochain).id,
+    joueurs: un<{ n: number; total: number }>(joueurs),
+    classes: un<{ n: number }>(classes).n,
+    forfaits: un<{ n: number }>(forfaits).n,
+  });
+});
+
+/**
+ * Passage à une nouvelle saison : la saison en cours est clôturée (classement archivé), la nouvelle
+ * commence maintenant avec un classement vide. Les soldes sont conservés, sauf si « solde » est donné
+ * (remise à niveau ponctuelle). Tout se fait en une transaction. Le nom doit être retapé pour confirmer.
+ */
+admin.post("/saison/nouvelle", async (c) => {
+  const b = (await c.req.json().catch(() => ({}))) as { nom?: string; confirmation?: string; solde?: number | null; fin?: string | null };
+  const nom = (b.nom ?? "").trim();
+  if (!/^[\p{L}\p{N} '’-]{1,40}$/u.test(nom)) return c.json({ erreur: "Nom de saison invalide." }, 400);
+  if ((b.confirmation ?? "").trim() !== nom) return c.json({ erreur: "Retapez exactement le nom de la nouvelle saison pour confirmer." }, 400);
+  const solde = b.solde === null || b.solde === undefined ? null : Math.trunc(Number(b.solde));
+  if (solde !== null && !(Number.isInteger(solde) && solde >= 0 && solde <= 10_000_000)) return c.json({ erreur: "Solde invalide." }, 400);
+  const maintenant = Date.now();
+  const fin = b.fin ? Date.parse(`${b.fin}T23:00:00Z`) : Date.UTC(2027, 11, 31, 23, 0, 0);
+  if (!Number.isFinite(fin) || fin <= maintenant + 24 * 3600 * 1000) return c.json({ erreur: "La date de fin doit être dans le futur." }, 400);
+  const db = c.env.DB;
+  const courante = await saisonCourante(db);
+  const prochain = await db.prepare("SELECT COALESCE(MAX(id), 0) + 1 AS id FROM saisons").first<{ id: number }>();
+  const id = prochain?.id ?? 1;
+  const requetes: D1PreparedStatement[] = [];
+  if (courante) requetes.push(db.prepare("UPDATE saisons SET fin = ? WHERE id = ?").bind(maintenant, courante.id));
+  requetes.push(db.prepare("INSERT INTO saisons (id, nom, debut, fin) VALUES (?, ?, ?, ?)").bind(id, nom, maintenant, fin));
+  if (solde !== null) {
+    // L'écart est inscrit en ajustement juste avant le début de la saison : historique juste, courbe propre.
+    requetes.push(
+      db.prepare(
+        "INSERT INTO transactions_jetons (joueur_id, montant, type, le) SELECT id, ?1 - solde, 'ajustement', ?2 FROM joueurs WHERE supprime_le IS NULL AND solde <> ?1",
+      ).bind(solde, maintenant - 1),
+      db.prepare("UPDATE joueurs SET solde = ? WHERE supprime_le IS NULL").bind(solde),
+    );
+  }
+  await db.batch(requetes);
+  await journaliser(c, "nouvelle_saison", null, { motif: `${courante ? `${courante.nom} → ` : ""}${nom}${solde !== null ? `, soldes à ${solde}` : ""}` });
+  return c.json({ ok: true, id, nom });
+});
+
 admin.get("/journal", async (c) => {
   const r = await c.env.DB.prepare(
     `SELECT a.action, a.details, a.le, ad.pseudo AS admin, j.pseudo AS joueur, a.joueur_id

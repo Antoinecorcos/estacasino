@@ -866,3 +866,5 @@ input[type="range"] { accent-color: var(--accent); }
 @media (max-width: 560px) { .grille-jeux { grid-template-columns: 1fr; } }
 /* Blackjack sur téléphone : la plaque « Vous » déborde sous la table, la remarque du croupier passe dessous. */
 @media (max-width: 700px) { .table-bj + .remarque, .table-bj ~ .remarque { padding-top: 26px; } }
+.carte-saison { gap: 12px; border-color: rgba(226, 184, 90, 0.4); }
+.carte-saison .champ > span { font-size: 13px; font-weight: 600; }

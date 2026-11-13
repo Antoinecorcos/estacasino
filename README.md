@@ -113,6 +113,8 @@ Le script écrit un mot de passe provisoire dans la base en ligne et l'affiche ;
 
 ### Passer à une nouvelle saison
 
+**Le plus simple : espace Admin → carte « Saison ».** Choisissez le nom, la fin prévue et, si besoin, une remise à niveau des soldes, retapez le nom pour confirmer, et c'est fait (action inscrite au journal). La commande ci-dessous fait la même chose depuis un terminal.
+
 La saison en cours est clôturée (son classement reste archivé en base) et la nouvelle commence avec un classement vide. Les soldes sont conservés d'une saison à l'autre. Aperçu, sans rien changer :
 
 ```bash
