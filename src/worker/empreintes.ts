@@ -6,7 +6,7 @@ import type { Env } from "./env";
 
 // Comptes multiples : on repère l'appareil (un identifiant aléatoire dans un cookie de longue durée)
 // et l'adresse IP. Les deux sont stockés hachés, jamais en clair. Ils servent à limiter les
-// inscriptions en série (un joueur à zéro qui recrée un compte pour repartir avec 10 000 jetons)
+// inscriptions en série (un joueur à zéro qui recrée un compte pour repartir avec son capital de départ)
 // et à montrer à l'équipe les comptes liés entre eux.
 
 type C = Context<{ Bindings: Env }>;

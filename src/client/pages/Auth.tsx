@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { AVATARS_DEPART } from "../../shared/avatar";
-import { MDP_MIN } from "../../shared/regles";
+import { CAPITAL_DEPART, formatJetons, MDP_MIN } from "../../shared/regles";
 import { api } from "../api";
 import { Avatar } from "../components/Avatar";
 import { Carte, Page } from "../components/Elements";
@@ -29,7 +29,7 @@ export function Accueil() {
             </p>
             <div className="rangee" style={{ gap: 12 }}>
               <Lien href="/inscription" className="btn btn-principal">
-                Prendre place · 10 000 jetons offerts
+                Prendre place · {formatJetons(CAPITAL_DEPART)} jetons offerts
               </Lien>
               <Lien href="/connexion" className="btn">
                 J'ai déjà un compte
@@ -178,7 +178,7 @@ export function Inscription() {
           <form className="pile" style={{ gap: 18 }} onSubmit={envoyer}>
             <div className="pile" style={{ gap: 6 }}>
               <h1 style={{ fontSize: 34 }}>Prendre place</h1>
-              <p className="muet">10 000 jetons offerts à l'arrivée. Ils n'ont aucune valeur, et c'est très bien comme ça.</p>
+              <p className="muet">{formatJetons(CAPITAL_DEPART)} jetons offerts à l'arrivée. Ils n'ont aucune valeur, et c'est très bien comme ça.</p>
             </div>
             <fieldset className="pile" style={{ gap: 10, border: "none", padding: 0, margin: 0 }}>
               <legend style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Votre avatar</legend>

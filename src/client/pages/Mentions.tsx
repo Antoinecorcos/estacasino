@@ -1,3 +1,4 @@
+import { CAPITAL_DEPART, formatJetons } from "../../shared/regles";
 import { Page } from "../components/Elements";
 
 // Texte de base à faire relire par un avocat avant l'ouverture publique.
@@ -15,7 +16,7 @@ export function Mentions() {
           cadeaux ou en lots. On ne gagne jamais d'argent.
         </p>
         <ul>
-          <li>Capital de départ : 10 000 jetons.</li>
+          <li>Capital de départ : {formatJetons(CAPITAL_DEPART)} jetons.</li>
           <li>Bonus quotidien : 2 000 jetons, plus 200 par jour consécutif (jusqu'à +3 000).</li>
           <li>Filet de sécurité : 2 000 jetons si votre solde passe sous 500, au plus une fois toutes les 4 heures.</li>
         </ul>

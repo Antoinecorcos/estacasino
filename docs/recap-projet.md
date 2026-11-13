@@ -93,7 +93,7 @@ Les jetons sont renouvelés et sans valeur. Ils servent à jouer, pas à acheter
 ### Sources de jetons (montants indicatifs à équilibrer en test)
 | Source | Montant proposé | Conditions |
 |---|---|---|
-| Capital de départ | 10 000 jetons | À l'inscription |
+| Capital de départ | 20 000 jetons (depuis la Saison 1) | À l'inscription |
 | Bonus quotidien | 2 000 jetons | Une fois par jour |
 | Série de connexions | +200 par jour consécutif, plafonné à 3 000 | Remis à zéro après un jour manqué |
 | Filet de sécurité | 2 000 jetons | Si le solde tombe sous 500, au maximum une fois toutes les 4 heures |

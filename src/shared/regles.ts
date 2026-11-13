@@ -1,7 +1,7 @@
 // Règles de l'économie de jetons. Les jetons sont fictifs et n'ont aucune valeur.
 // Aucune de ces valeurs ne dépend d'un achat ou d'un abonnement.
 
-export const CAPITAL_DEPART = 10_000;
+export const CAPITAL_DEPART = 20_000;
 export const BONUS_QUOTIDIEN = 2_000;
 export const BONUS_SERIE_PAR_JOUR = 200;
 export const BONUS_SERIE_MAX = 3_000;
