@@ -102,25 +102,43 @@ export async function aForfait(db: D1Database, joueurId: string): Promise<boolea
   return Boolean(await db.prepare("SELECT 1 FROM forfaits_saison WHERE joueur_id = ? AND saison_id = ?").bind(joueurId, saison.id).first());
 }
 
-export async function saisonCourante(db: D1Database): Promise<{ id: number; nom: string; debut: number; fin: number } | null> {
+type Saison = { id: number; nom: string; debut: number; fin: number };
+/** Saison en cours, gardée 20 secondes en mémoire : chaque partie la demandait plusieurs fois à la base. */
+let saisonEnCache: { valeur: Saison | null; expire: number } | null = null;
+
+export async function saisonCourante(db: D1Database): Promise<Saison | null> {
   const now = Date.now();
-  return db
+  if (saisonEnCache && saisonEnCache.expire > now && (!saisonEnCache.valeur || saisonEnCache.valeur.fin > now)) return saisonEnCache.valeur;
+  const valeur = await db
     .prepare("SELECT id, nom, debut, fin FROM saisons WHERE debut <= ?1 AND fin > ?1 ORDER BY id DESC LIMIT 1")
     .bind(now)
-    .first();
+    .first<Saison>();
+  saisonEnCache = { valeur, expire: now + 20_000 };
+  return valeur;
+}
+
+/** À appeler après un changement de saison (l'admin), pour ne pas attendre la fin du cache. */
+export function oublierSaison(): void {
+  saisonEnCache = null;
 }
 
 /**
  * Enregistre le résultat d'une main (blackjack), d'un tour (roulette) ou d'un lancer (machine à sous)
  * dans les statistiques de saison. Les parties en room privée comptent comme les autres.
  */
-export async function enregistrerResultat(db: D1Database, joueurId: string, jeu: Exclude<Jeu, "poker">, mise: number, rendu: number): Promise<void> {
+export async function enregistrerResultat(
+  db: D1Database,
+  joueurId: string,
+  jeu: Exclude<Jeu, "poker">,
+  mise: number,
+  rendu: number,
+): Promise<{ gains: number; parties: number } | null> {
   const saison = await saisonCourante(db);
-  if (!saison) return;
+  if (!saison) return null;
   const net = rendu - mise;
   const [parties, gains] =
     jeu === "blackjack" ? ["mains_bj", "gains_bj"] : jeu === "roulette" ? ["tours_roulette", "gains_roulette"] : ["tours_machine", "gains_machine"];
-  await db
+  return db
     .prepare(
       `INSERT INTO stats_saison (joueur_id, saison_id, gains_nets, mains, ${parties}, ${gains})
        VALUES (?1, ?2, ?3, 1, 1, ?3)
@@ -128,10 +146,12 @@ export async function enregistrerResultat(db: D1Database, joueurId: string, jeu:
          gains_nets = gains_nets + excluded.gains_nets,
          mains = mains + 1,
          ${parties} = ${parties} + 1,
-         ${gains} = ${gains} + excluded.${gains}`,
+         ${gains} = ${gains} + excluded.${gains}
+       RETURNING gains_nets, mains`,
     )
     .bind(joueurId, saison.id, net)
-    .run();
+    .first<{ gains_nets: number; mains: number }>()
+    .then((l) => (l ? { gains: l.gains_nets, parties: l.mains } : null));
 }
 
 /**

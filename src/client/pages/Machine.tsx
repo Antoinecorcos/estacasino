@@ -26,6 +26,7 @@ interface Reponse {
   solde: number;
   defis: { titre: string; recompense: number }[];
   forfait: boolean;
+  saison: { gains: number; parties: number } | null;
 }
 
 const CLE_MISE = "esta-machine-mise";
@@ -49,7 +50,7 @@ const ORDRE_JACKPOTS: Jackpot[] = ["grand", "majeur", "mineur", "mini"];
 const CHOIX_AUTO = [10, 25, 50, 100];
 
 export function PageMachine() {
-  const { moi, majSolde, notifier, rafraichir } = useSession();
+  const { moi, majSolde, majSaison, notifier, rafraichir } = useSession();
   const annoncerDefi = useAnnonceDefi();
   const cabinet = useRef<HTMLDivElement>(null);
   const toileRouleaux = useRef<HTMLCanvasElement>(null);
@@ -75,6 +76,8 @@ export function PageMachine() {
   const [menuAuto, setMenuAuto] = useState(false);
   const [infos, setInfos] = useState(false);
 
+  const rafraichirRef = useRef(rafraichir);
+  rafraichirRef.current = rafraichir;
   const enCoursRef = useRef(false);
   const autoRef = useRef(0);
   const soldeRef = useRef(moi?.solde ?? 0);
@@ -96,6 +99,7 @@ export function PageMachine() {
     return () => {
       m.detruire();
       moteur.current = null;
+      void rafraichirRef.current(); // en quittant : rang, ligue et défis à jour, en un seul appel
     };
   }, []);
 
@@ -138,7 +142,7 @@ export function PageMachine() {
     majSolde(rep.soldeApresMise);
     await m.raconter(rep.resultat, debut, autoRef.current > 0);
     majSolde(rep.solde);
-    void rafraichir(); // « Gains de saison » de l'en-tête
+    if (rep.saison) majSaison(rep.saison.gains, rep.saison.parties); // « Gains de saison » de l'en-tête
     for (const d of rep.defis) annoncerDefi(d.titre, d.recompense);
     if (rep.forfait) notifier("Forfait saison : 2 000 jetons crédités sur votre solde.");
     enCoursRef.current = false;
@@ -148,7 +152,7 @@ export function PageMachine() {
       setAuto(autoRef.current);
       if (autoRef.current > 0) setTimeout(() => tournerRef.current(), turbo ? 150 : 500);
     }
-  }, [turbo, miseEffective, majSolde, notifier, rafraichir, annoncerDefi]);
+  }, [turbo, miseEffective, majSolde, majSaison, notifier, rafraichir, annoncerDefi]);
   const tournerRef = useRef(tourner);
   tournerRef.current = tourner;
 

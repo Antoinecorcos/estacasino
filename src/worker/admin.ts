@@ -2,7 +2,7 @@ import { Hono, type Context } from "hono";
 import { lireAvatar } from "../shared/avatar";
 import { joueurConnecte, type JoueurSession } from "./auth";
 import { chaineAleatoire, hacherMotDePasse } from "./crypto";
-import { aForfait, crediter, debiter, saisonCourante } from "./economie";
+import { aForfait, crediter, debiter, oublierSaison, saisonCourante } from "./economie";
 import { comptesLies } from "./empreintes";
 import type { Env } from "./env";
 
@@ -188,6 +188,7 @@ admin.post("/saison/nouvelle", async (c) => {
     );
   }
   await db.batch(requetes);
+  oublierSaison();
   await journaliser(c, "nouvelle_saison", null, { motif: `${courante ? `${courante.nom} → ` : ""}${nom}${solde !== null ? `, soldes à ${solde}` : ""}` });
   return c.json({ ok: true, id, nom });
 });

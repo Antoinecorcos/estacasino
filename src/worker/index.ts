@@ -38,7 +38,7 @@ import { creerSessionCheckout, type SessionCheckoutTerminee, verifierSignatureWe
 import { admin } from "./admin";
 import { notifications, tacheNotifications } from "./notifications";
 import { lireDefis, progresserDefis } from "./defis";
-import { jouerTour, MISES_MACHINE, positionsDe, type Hasard } from "../shared/machine";
+import { jouerTour, MISES_MACHINE, type Hasard } from "../shared/machine";
 
 export { BlackjackRoom } from "./rooms/blackjack";
 export { RouletteRoom } from "./rooms/roulette";
@@ -471,7 +471,7 @@ app.post("/machine/tourner", async (c) => {
   const resultat = jouerTour(mise, hasardCrypto());
   let solde = soldeApresMise;
   if (resultat.total > 0) solde = (await crediter(db, moi.id, resultat.total, "gain", "machine", null)) ?? solde;
-  await enregistrerResultat(db, moi.id, "machine", mise, resultat.total);
+  const statsSaison = await enregistrerResultat(db, moi.id, "machine", mise, resultat.total);
   let defis: { titre: string; recompense: number }[] = [];
   try {
     defis = await progresserDefis(db, moi.id, {
@@ -484,7 +484,8 @@ app.post("/machine/tourner", async (c) => {
   }
   const recharge = await rechargerForfait(db, moi.id);
   if (recharge !== null) solde = recharge;
-  return c.json({ resultat, soldeApresMise, solde, defis, forfait: recharge !== null, pieces: positionsDe(resultat.base.grille, "piece").length });
+  // Gains de saison à jour dans la réponse : la page n'a pas à recharger tout le profil après chaque lancer.
+  return c.json({ resultat, soldeApresMise, solde, defis, forfait: recharge !== null, saison: statsSaison });
 });
 
 // ───────────── Classement ─────────────

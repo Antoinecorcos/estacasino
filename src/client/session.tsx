@@ -8,6 +8,8 @@ interface ValeurSession {
   rafraichir: () => Promise<void>;
   /** Met à jour le solde affiché (les rooms envoient le solde à jour en temps réel). */
   majSolde: (solde: number) => void;
+  /** Met à jour les gains de saison affichés (machine à sous : renvoyés avec chaque lancer). */
+  majSaison: (gains: number, parties: number) => void;
   notifier: (message: string, erreur?: boolean) => void;
 }
 
@@ -34,6 +36,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => appliquerTheme(moi?.theme), [moi?.theme]);
 
   const majSolde = useCallback((solde: number) => setMoi((m) => (m && m.solde !== solde ? { ...m, solde } : m)), []);
+  const majSaison = useCallback(
+    (gains: number, parties: number) => setMoi((m) => (m?.saison ? { ...m, saison: { ...m.saison, gains, parties } } : m)),
+    [],
+  );
   const notifier = useCallback((message: string, erreur = false) => {
     const id = Date.now();
     setToast({ message, erreur, id });
@@ -41,7 +47,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ moi, charge, rafraichir, majSolde, notifier }}>
+    <Ctx.Provider value={{ moi, charge, rafraichir, majSolde, majSaison, notifier }}>
       {children}
       {toast && (
         <div className={`toast${toast.erreur ? " err" : ""}`} role="status">
