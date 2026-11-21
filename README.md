@@ -111,6 +111,19 @@ npm run reset-password -- <pseudo>
 
 Le script écrit un mot de passe provisoire dans la base en ligne et l'affiche ; transmettez-le au joueur. Ajoutez `--local` pour la base de développement. Plus simple : le bouton « Mot de passe provisoire » de l'espace admin.
 
+### Événements (espace Admin → « Événements »)
+
+Quatre types, réglables sans toucher au code :
+
+| Type | Ce qu'il fait |
+|---|---|
+| Boost (heure dorée) | Pendant l'événement, récompenses des défis et/ou bonus quotidien multipliés (×1 à ×5) |
+| Défi collectif | Un total commun (parties ou jetons misés, un jeu ou tous) ; si la cible est atteinte, chaque participant récupère la récompense |
+| Classement éclair | Classement sur la durée de l'événement (gains nets ou parties) ; le podium est payé automatiquement à la fin (tâche planifiée), ou tout de suite avec « Clôturer » |
+| Calendrier de cadeaux | Une case de jetons à ouvrir chaque jour (ex. calendrier de l'Avent) |
+
+Chaque événement a une **visibilité** : *Brouillon* (invisible), *Test* (visible et actif pour les admins seulement, pour vérifier), *En ligne* (tous les joueurs). Tant qu'aucun événement n'est en ligne, rien ne change pour les joueurs : ni bandeau, ni carte, ni requête de plus. Une option envoie une notification au démarrage. Les récompenses sont des jetons (type « evenement » dans l'historique) et ne comptent pas dans les gains de saison ; jamais de lot réel. Un changement de visibilité peut mettre jusqu'à 20 secondes à se propager.
+
 ### Passer à une nouvelle saison
 
 **Le plus simple : espace Admin → carte « Saison ».** Choisissez le nom, la fin prévue et, si besoin, une remise à niveau des soldes, retapez le nom pour confirmer, et c'est fait (action inscrite au journal). La commande ci-dessous fait la même chose depuis un terminal.

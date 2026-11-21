@@ -37,6 +37,7 @@ import { creerSessionCheckout, type SessionCheckoutTerminee, verifierSignatureWe
 
 import { admin } from "./admin";
 import { notifications, tacheNotifications } from "./notifications";
+import { boosts, evenements, evenementsPour, tacheEvenements } from "./evenements";
 import { lireDefis, progresserDefis } from "./defis";
 import { jouerTour, MISES_MACHINE, type Hasard } from "../shared/machine";
 
@@ -305,6 +306,8 @@ app.get("/moi", async (c) => {
   const recharge = await rechargerForfait(c.env.DB, moi.id);
   if (recharge !== null) moi.solde = recharge;
   const forfait = await aForfait(c.env.DB, moi.id);
+  const evts = await evenementsPour(c.env.DB, moi.role);
+  const mult = await boosts(c.env.DB, moi.role);
   const j = await c.env.DB.prepare("SELECT bonus_dernier, bonus_serie, filet_dernier, theme FROM joueurs WHERE id = ?")
     .bind(moi.id)
     .first<{ bonus_dernier: string | null; bonus_serie: number; filet_dernier: number | null; theme: string }>();
@@ -326,9 +329,11 @@ app.get("/moi", async (c) => {
     inventaire: inventaire.results.map((x) => x.piece),
     saison: saison ? { nom: saison.nom, fin: saison.fin, gains, parties, rang, minParties: CLASSEMENT_MIN_PARTIES } : null,
     ligue: { id: ligue.id, nom: ligue.nom, suivante: suivante ? { id: suivante.id, nom: suivante.nom, seuil: suivante.seuil } : null },
-    bonus: { disponible: bonusDispo, montant: montantBonus(serieSuivante), serie: bonusDispo ? serieSuivante : (j?.bonus_serie ?? 1) },
+    bonus: { disponible: bonusDispo, montant: montantBonus(serieSuivante) * mult.bonus, serie: bonusDispo ? serieSuivante : (j?.bonus_serie ?? 1) },
     filet: { seuil: FILET_SEUIL, montant: FILET_MONTANT, disponible: moi.solde < FILET_SEUIL && Date.now() >= filetProchain, prochain: filetProchain },
     forfait,
+    // Événements visibles (vide tant que rien n'est publié : l'interface reste alors inchangée).
+    evenements: evts.map((e) => ({ id: e.id, type: e.type, titre: e.titre, debut: e.debut, fin: e.fin, test: e.visibilite === "admins" })),
   });
 });
 
@@ -343,7 +348,7 @@ app.post("/bonus/quotidien", async (c) => {
     .bind(aujourdHui, serie, moi.id, aujourdHui)
     .run();
   if (maj.meta.changes !== 1) return erreur(c, "Bonus déjà récupéré aujourd'hui. Revenez demain !", 409);
-  const montant = montantBonus(serie);
+  const montant = montantBonus(serie) * (await boosts(c.env.DB, moi.role)).bonus;
   const solde = await crediter(c.env.DB, moi.id, montant, "bonus", null, null);
   return c.json({ ok: true, montant, serie, solde });
 });
@@ -416,7 +421,9 @@ app.get("/moi/historique", async (c) => {
 app.get("/defis", async (c) => {
   const moi = await exigerJoueur(c);
   if (moi instanceof Response) return moi;
-  return c.json({ defis: await lireDefis(c.env.DB, moi.id) });
+  const mult = (await boosts(c.env.DB, moi.role)).defis;
+  const defis = await lireDefis(c.env.DB, moi.id);
+  return c.json({ defis: mult > 1 ? defis.map((d) => ({ ...d, recompense: d.recompense * mult, multiplicateur: mult })) : defis });
 });
 
 app.post("/defis/:defi/recuperer", async (c) => {
@@ -429,9 +436,10 @@ app.post("/defis/:defi/recuperer", async (c) => {
     .bind(moi.id, jourParis(), c.req.param("defi"))
     .first<{ recompense: number }>();
   if (!r) return erreur(c, "Ce défi n'est pas encore réussi, ou déjà récupéré.", 409);
-  const solde = await crediter(c.env.DB, moi.id, r.recompense, "defi", null, null);
-  await enregistrerDefi(c.env.DB, moi.id, r.recompense);
-  return c.json({ ok: true, recompense: r.recompense, solde });
+  const recompense = r.recompense * (await boosts(c.env.DB, moi.role)).defis;
+  const solde = await crediter(c.env.DB, moi.id, recompense, "defi", null, null);
+  await enregistrerDefi(c.env.DB, moi.id, recompense);
+  return c.json({ ok: true, recompense, solde });
 });
 
 // ───────────── Machine à sous ─────────────
@@ -794,6 +802,7 @@ app.post("/stripe/webhook", async (c) => {
 
 app.route("/admin", admin);
 app.route("/notifications", notifications);
+app.route("/evenements", evenements);
 
 app.notFound((c) => erreur(c, "Introuvable.", 404));
 app.onError((e, c) => {
@@ -805,6 +814,12 @@ export default {
   fetch: app.fetch,
   /** Tâche planifiée (toutes les 15 minutes) : rappels du bonus du jour et du filet de sécurité. */
   scheduled(_evenement: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(tacheNotifications(env).then((r) => (r.bonus || r.filet) && console.log("notifications", r)));
+    ctx.waitUntil(
+      tacheEvenements(env)
+        .then((r) => (r.clotures || r.notifies) && console.log("événements", r))
+        .catch((e) => console.error("événements", e))
+        .then(() => tacheNotifications(env))
+        .then((r) => (r.bonus || r.filet) && console.log("notifications", r)),
+    );
   },
 } satisfies ExportedHandler<Env>;

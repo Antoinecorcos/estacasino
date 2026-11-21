@@ -4,6 +4,8 @@ import { joueurConnecte, type JoueurSession } from "./auth";
 import { chaineAleatoire, hacherMotDePasse } from "./crypto";
 import { aForfait, crediter, debiter, oublierSaison, saisonCourante } from "./economie";
 import { comptesLies } from "./empreintes";
+import { type TypeEvenement, validerParams, type Visibilite } from "../shared/evenements";
+import { cloturerClassement, lireLigne, oublierEvenements } from "./evenements";
 import type { Env } from "./env";
 
 // Espace d'administration : réservé aux comptes dont le rôle est « admin ».
@@ -191,6 +193,109 @@ admin.post("/saison/nouvelle", async (c) => {
   oublierSaison();
   await journaliser(c, "nouvelle_saison", null, { motif: `${courante ? `${courante.nom} → ` : ""}${nom}${solde !== null ? `, soldes à ${solde}` : ""}` });
   return c.json({ ok: true, id, nom });
+});
+
+// ───────── Événements ─────────
+
+admin.get("/evenements", async (c) => {
+  const r = await c.env.DB.prepare(
+    `SELECT e.*, (SELECT COUNT(*) FROM evenements_joueurs ej WHERE ej.evenement_id = e.id) AS participants,
+       (SELECT COUNT(*) FROM evenements_cadeaux ec WHERE ec.evenement_id = e.id) AS cadeaux
+     FROM evenements e ORDER BY e.debut DESC LIMIT 100`,
+  ).all<Parameters<typeof lireLigne>[0] & { participants: number; cadeaux: number }>();
+  return c.json({ evenements: r.results.map((l) => ({ ...lireLigne(l), participants: l.participants, cadeaux: l.cadeaux })) });
+});
+
+interface CorpsEvenement {
+  type?: TypeEvenement;
+  titre?: string;
+  description?: string;
+  debut?: number;
+  fin?: number;
+  visibilite?: Visibilite;
+  notifier?: boolean;
+  params?: unknown;
+}
+
+function validerEvenement(b: CorpsEvenement): string | null {
+  if (!b.type || !["boost", "objectif", "classement", "calendrier"].includes(b.type)) return "Type d'événement invalide.";
+  if (!b.titre?.trim() || b.titre.trim().length > 60) return "Titre requis (60 caractères au plus).";
+  if ((b.description ?? "").length > 300) return "Description : 300 caractères au plus.";
+  if (!Number.isFinite(b.debut) || !Number.isFinite(b.fin) || (b.fin as number) <= (b.debut as number)) return "La fin doit être après le début.";
+  if ((b.fin as number) - (b.debut as number) > 90 * 24 * 3600 * 1000) return "Un événement dure 90 jours au plus.";
+  if (b.visibilite && !["brouillon", "admins", "tous"].includes(b.visibilite)) return "Visibilité invalide.";
+  return validerParams(b.type, b.params);
+}
+
+admin.post("/evenements", async (c) => {
+  const b = (await c.req.json().catch(() => ({}))) as CorpsEvenement;
+  const err = validerEvenement(b);
+  if (err) return c.json({ erreur: err }, 400);
+  const r = await c.env.DB.prepare(
+    `INSERT INTO evenements (type, titre, description, debut, fin, visibilite, notifier, params, cree_le)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+  )
+    .bind(b.type, b.titre!.trim(), (b.description ?? "").trim(), b.debut, b.fin, b.visibilite ?? "brouillon", b.notifier ? 1 : 0, JSON.stringify(b.params), Date.now())
+    .first<{ id: number }>();
+  oublierEvenements();
+  await journaliser(c, "evenement_cree", null, { motif: `${b.titre!.trim()} (${b.visibilite ?? "brouillon"})` });
+  return c.json({ ok: true, id: r?.id });
+});
+
+admin.put("/evenements/:id", async (c) => {
+  const id = Number(c.req.param("id"));
+  const b = (await c.req.json().catch(() => ({}))) as CorpsEvenement;
+  const err = validerEvenement(b);
+  if (err) return c.json({ erreur: err }, 400);
+  const r = await c.env.DB.prepare(
+    "UPDATE evenements SET type = ?, titre = ?, description = ?, debut = ?, fin = ?, visibilite = ?, notifier = ?, params = ? WHERE id = ? AND cloture = 0",
+  )
+    .bind(b.type, b.titre!.trim(), (b.description ?? "").trim(), b.debut, b.fin, b.visibilite ?? "brouillon", b.notifier ? 1 : 0, JSON.stringify(b.params), id)
+    .run();
+  if (r.meta.changes !== 1) return c.json({ erreur: "Événement introuvable, ou déjà clôturé." }, 404);
+  oublierEvenements();
+  await journaliser(c, "evenement_modifie", null, { motif: `${b.titre!.trim()} (${b.visibilite ?? "brouillon"})` });
+  return c.json({ ok: true });
+});
+
+/** Changer seulement la visibilité (brouillon → test admins → en ligne). */
+admin.post("/evenements/:id/visibilite", async (c) => {
+  const id = Number(c.req.param("id"));
+  const { visibilite } = (await c.req.json().catch(() => ({}))) as { visibilite?: Visibilite };
+  if (!visibilite || !["brouillon", "admins", "tous"].includes(visibilite)) return c.json({ erreur: "Visibilité invalide." }, 400);
+  const e = await c.env.DB.prepare("UPDATE evenements SET visibilite = ? WHERE id = ? RETURNING titre").bind(visibilite, id).first<{ titre: string }>();
+  if (!e) return c.json({ erreur: "Événement introuvable." }, 404);
+  oublierEvenements();
+  await journaliser(c, "evenement_visibilite", null, { motif: `${e.titre} → ${visibilite}` });
+  return c.json({ ok: true });
+});
+
+/** Supprimer : seulement si personne n'y a encore participé (sinon, le repasser en brouillon). */
+admin.delete("/evenements/:id", async (c) => {
+  const id = Number(c.req.param("id"));
+  const db = c.env.DB;
+  const usage = await db
+    .prepare("SELECT (SELECT COUNT(*) FROM evenements_joueurs WHERE evenement_id = ?1) + (SELECT COUNT(*) FROM evenements_cadeaux WHERE evenement_id = ?1) AS n")
+    .bind(id)
+    .first<{ n: number }>();
+  if ((usage?.n ?? 0) > 0) return c.json({ erreur: "Des joueurs ont déjà participé : repassez-le en brouillon plutôt que de le supprimer." }, 409);
+  const e = await db.prepare("DELETE FROM evenements WHERE id = ? RETURNING titre").bind(id).first<{ titre: string }>();
+  if (!e) return c.json({ erreur: "Événement introuvable." }, 404);
+  await db.prepare("DELETE FROM evenements_notifs WHERE evenement_id = ?").bind(id).run();
+  oublierEvenements();
+  await journaliser(c, "evenement_supprime", null, { motif: e.titre });
+  return c.json({ ok: true });
+});
+
+/** Classement : distribuer les récompenses tout de suite (sinon, fait automatiquement à la fin). */
+admin.post("/evenements/:id/cloturer", async (c) => {
+  const id = Number(c.req.param("id"));
+  const l = await c.env.DB.prepare("SELECT * FROM evenements WHERE id = ? AND type = 'classement'").bind(id).first<Parameters<typeof lireLigne>[0]>();
+  if (!l) return c.json({ erreur: "Classement introuvable." }, 404);
+  if (l.fin > Date.now()) await c.env.DB.prepare("UPDATE evenements SET fin = ? WHERE id = ?").bind(Date.now(), id).run();
+  const gagnants = await cloturerClassement(c.env.DB, lireLigne(l));
+  await journaliser(c, "evenement_cloture", null, { motif: `${l.titre} : ${gagnants} récompense(s)` });
+  return c.json({ ok: true, gagnants });
 });
 
 admin.get("/journal", async (c) => {

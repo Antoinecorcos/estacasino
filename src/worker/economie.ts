@@ -1,10 +1,11 @@
 import { FORFAIT_MONTANT, FORFAIT_SEUIL, type Jeu } from "../shared/regles";
+import { progresserEvenements } from "./evenements";
 
 // Tous les mouvements de jetons passent par ici et sont inscrits dans `transactions_jetons`.
 // Jetons achetés : type « achat » (pack) ou « forfait » (recharge du forfait saison).
 
 export type TypeTransaction =
-  | "depart" | "bonus" | "filet" | "mise" | "gain" | "remboursement" | "defi" | "cave" | "retrait" | "ajustement" | "achat" | "forfait";
+  | "depart" | "bonus" | "filet" | "mise" | "gain" | "remboursement" | "defi" | "cave" | "retrait" | "ajustement" | "achat" | "forfait" | "evenement";
 
 /** Débite un joueur si son solde le permet. Retourne le nouveau solde, ou null si solde insuffisant. */
 export async function debiter(
@@ -133,9 +134,10 @@ export async function enregistrerResultat(
   mise: number,
   rendu: number,
 ): Promise<{ gains: number; parties: number } | null> {
+  const net = rendu - mise;
+  await progresserEvenements(db, joueurId, jeu, mise, net);
   const saison = await saisonCourante(db);
   if (!saison) return null;
-  const net = rendu - mise;
   const [parties, gains] =
     jeu === "blackjack" ? ["mains_bj", "gains_bj"] : jeu === "roulette" ? ["tours_roulette", "gains_roulette"] : ["tours_machine", "gains_machine"];
   return db
@@ -175,6 +177,7 @@ export async function enregistrerDefi(db: D1Database, joueurId: string, recompen
  * `net` = jetons gagnés ou perdus sur la main (partie libre) ou sur le tournoi (Sit & Go).
  */
 export async function enregistrerPoker(db: D1Database, joueurId: string, net: number): Promise<void> {
+  await progresserEvenements(db, joueurId, "poker", 0, net);
   const saison = await saisonCourante(db);
   if (!saison) return;
   await db

@@ -32,4 +32,6 @@ export interface Moi {
   filet: { seuil: number; montant: number; disponible: boolean; prochain: number };
   /** Forfait saison actif : recharge automatique à zéro. */
   forfait: boolean;
+  /** Événements publiés et visibles par ce joueur (vide la plupart du temps). */
+  evenements?: { id: number; type: string; titre: string; debut: number; fin: number; test: boolean }[];
 }

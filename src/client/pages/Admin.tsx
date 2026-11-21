@@ -3,6 +3,7 @@ import type { ConfigAvatar } from "../../shared/avatar";
 import { trouverProduit } from "../../shared/boutique";
 import { formatJetons, formatPrix } from "../../shared/regles";
 import { api } from "../api";
+import { AdminEvenements } from "../components/AdminEvenements";
 import { Avatar } from "../components/Avatar";
 import { Page } from "../components/Elements";
 import { useSession } from "../session";
@@ -48,6 +49,11 @@ const LIBELLES_ACTION: Record<string, string> = {
   mot_de_passe_provisoire: "Mot de passe provisoire",
   suspension: "Suspension",
   nouvelle_saison: "Nouvelle saison",
+  evenement_cree: "Événement créé",
+  evenement_modifie: "Événement modifié",
+  evenement_visibilite: "Visibilité d'un événement",
+  evenement_supprime: "Événement supprimé",
+  evenement_cloture: "Classement clôturé",
   reactivation: "Réactivation",
 };
 
@@ -311,6 +317,8 @@ export function Admin() {
             )}
           </section>
         </div>
+
+        <AdminEvenements apres={recharger} />
 
         <CarteSaison apres={recharger} />
 

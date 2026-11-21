@@ -51,7 +51,10 @@ export function DefisDuJour() {
             <li key={d.defi} className={d.reclame ? "reclame" : undefined}>
               <div className="defi-tete">
                 <span>{d.titre}</span>
-                <span className="accent num">+{formatJetons(d.recompense)}</span>
+                <span className="accent num">
+                  +{formatJetons(d.recompense)}
+                  {d.multiplicateur && d.multiplicateur > 1 && <span className="evt-multi petit">×{d.multiplicateur}</span>}
+                </span>
               </div>
               <div className="defi-pied">
                 <div className="jauge" role="progressbar" aria-valuemin={0} aria-valuemax={d.objectif} aria-valuenow={d.progression} aria-label={d.titre}>

@@ -868,3 +868,41 @@ input[type="range"] { accent-color: var(--accent); }
 @media (max-width: 700px) { .table-bj + .remarque, .table-bj ~ .remarque { padding-top: 26px; } }
 .carte-saison { gap: 12px; border-color: rgba(226, 184, 90, 0.4); }
 .carte-saison .champ > span { font-size: 13px; font-weight: 600; }
+
+/* ───── Événements (affichés seulement quand un événement est publié) ───── */
+.bandeau-evenement { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 7px 16px; font-size: 13px; text-decoration: none; color: var(--ivoire); background: linear-gradient(90deg, rgba(201, 164, 92, 0.05), rgba(201, 164, 92, 0.22), rgba(201, 164, 92, 0.05)); border-bottom: 1px solid rgba(201, 164, 92, 0.35); }
+.bandeau-evenement:hover { color: #fff6d2; }
+.bandeau-etoile { color: var(--accent); animation: rappels-sonne 2.6s ease-in-out infinite; }
+.badge-test { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: rgba(77, 163, 255, 0.15); color: #8cc4ff; border: 1px solid rgba(77, 163, 255, 0.45); }
+.grille-evenements { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; align-items: start; }
+.evenement { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; border-color: rgba(201, 164, 92, 0.5); background: radial-gradient(120% 90% at 0% 0%, rgba(201, 164, 92, 0.12), transparent 60%), var(--ardoise); animation: apparition 0.35s ease both; }
+.evenement.fini { opacity: 0.8; border-color: var(--ligne); }
+.evt-boost { border-color: #f3c55a; box-shadow: 0 0 24px rgba(255, 200, 80, 0.18); }
+.evt-entete { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.evt-entete h3 { font-size: 21px; }
+.evt-temps { flex: none; font-size: 12px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.evt-description { font-size: 14px; margin: 0; }
+.evt-multi { display: inline-block; padding: 3px 10px; border-radius: 999px; font-weight: 800; font-size: 13px; color: #1a1209; background: linear-gradient(180deg, #f6dc82, #c99a3e); }
+.evt-multi.petit { padding: 0 6px; font-size: 11px; margin-left: 6px; vertical-align: 1px; }
+.evt-jauge { height: 10px; border-radius: 999px; background: var(--encre); border: 1px solid var(--ligne); overflow: hidden; }
+.evt-jauge i { display: block; height: 100%; background: linear-gradient(90deg, #c99a3e, #f6dc82); border-radius: inherit; transition: width 0.6s ease; }
+.evt-ligne { justify-content: space-between; gap: 8px; font-size: 13px; }
+.evt-podium { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
+.evt-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.evt-liste li { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 8px; }
+.evt-liste li.moi { background: rgba(201, 164, 92, 0.1); }
+.evt-liste .rang { width: 18px; font-family: var(--titre); color: var(--accent); }
+.evt-liste .pseudo { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.evt-cases { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 6px; }
+.evt-case { height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; border: 1px solid var(--ligne); color: var(--muet); }
+.evt-case.ouverte { background: rgba(201, 164, 92, 0.18); border-color: rgba(201, 164, 92, 0.5); color: var(--accent); }
+.evt-case.aujourdhui { border-color: var(--accent); color: #1a1209; background: linear-gradient(180deg, #f6dc82, #c99a3e); animation: mas-respire 2.4s ease-in-out infinite; }
+.evt-case.passee { opacity: 0.4; }
+.admin-evenements { gap: 12px; }
+.ligne-evenement { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--ligne); border-left-width: 4px; }
+.ligne-evenement.vis-brouillon { border-left-color: var(--ligne-2); }
+.ligne-evenement.vis-admins { border-left-color: #4da3ff; }
+.ligne-evenement.vis-tous { border-left-color: var(--accent); background: rgba(201, 164, 92, 0.06); }
+.onglets.petits button { padding: 5px 10px; font-size: 12px; }
+.form-evenement { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 14px; border: 1px dashed rgba(201, 164, 92, 0.5); background: rgba(0, 0, 0, 0.25); }
+.form-evenement .champ > span { font-size: 13px; font-weight: 600; }

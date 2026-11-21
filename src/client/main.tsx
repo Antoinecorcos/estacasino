@@ -2,6 +2,7 @@ import React, { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Entete, Pied } from "./components/Elements";
 import { TutoInstallation } from "./components/TutoInstallation";
+import { BandeauEvenement } from "./components/Evenements";
 import { initialiserInstallation } from "./installation";
 import { Accueil, Connexion, Inscription, MotDePasseOublie } from "./pages/Auth";
 import { Admin } from "./pages/Admin";
@@ -29,6 +30,14 @@ const PAGES_PUBLIQUES: Record<string, () => React.JSX.Element | null> = {
 
 /** Pages de jeu : plein écran, sans pied de page (la mention « jetons fictifs » est dans la barre du jeu). */
 const PAGE_JEU = /^\/(blackjack|machine|roulette(\/solo)?|room\/[A-Za-z]{5}|poker\/table\/[a-z0-9-]+)$/;
+
+/** Bandeau d'événement en cours (rien sans événement, ni sur les pages de jeu). */
+function Bandeau() {
+  const chemin = useChemin();
+  const { moi } = useSession();
+  if (!moi?.evenements?.length || PAGE_JEU.test(chemin)) return null;
+  return <BandeauEvenement chemin={chemin} />;
+}
 
 function Contenu() {
   const chemin = useChemin();
@@ -77,6 +86,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <SessionProvider>
       <Entete />
+      <Bandeau />
       <Contenu />
       <Pied />
       <TutoInstallation />

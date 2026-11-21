@@ -55,4 +55,6 @@ export interface DefiDuJour {
   progression: number;
   recompense: number;
   reclame: boolean;
+  /** Pendant un boost : la récompense affichée est déjà multipliée. */
+  multiplicateur?: number;
 }
