@@ -111,6 +111,9 @@ export function EvenementsLobby() {
 
             {e.objectif && (
               <div className="pile" style={{ gap: 8 }}>
+                <span className="evt-critere">
+                  Objectif : {NOMS_MESURES[e.objectif.mesure]} · {e.objectif.jeu === "tous" ? "tous les jeux" : NOMS_JEUX[e.objectif.jeu]}
+                </span>
                 <div className="evt-jauge" role="progressbar" aria-valuenow={e.objectif.total} aria-valuemin={0} aria-valuemax={e.objectif.cible}>
                   <i style={{ width: `${Math.min(100, (100 * e.objectif.total) / e.objectif.cible)}%` }} />
                 </div>
@@ -137,6 +140,10 @@ export function EvenementsLobby() {
 
             {e.classement && (
               <div className="pile" style={{ gap: 8 }}>
+                {/* Ce qui est classé vient des réglages de l'événement, pas de la description libre. */}
+                <span className="evt-critere">
+                  Classement : {NOMS_MESURES[e.classement.mesure]} · {e.classement.jeu === "tous" ? "tous les jeux" : NOMS_JEUX[e.classement.jeu]}
+                </span>
                 <div className="evt-podium muet">
                   {e.classement.recompenses.slice(0, 3).map((r, i) => (
                     <span key={i}>{i + 1}{i === 0 ? "er" : "e"} : {formatJetons(r)}</span>
@@ -162,7 +169,7 @@ export function EvenementsLobby() {
                     ? `Bravo : ${formatJetons(e.classement.maRecompense)} jetons gagnés.`
                     : e.classement.moi
                       ? `Votre rang : ${e.classement.moi.rang}e (${formatJetons(e.classement.moi.valeur)})`
-                      : `Classé sur les ${NOMS_MESURES[e.classement.mesure]}${e.classement.jeu !== "tous" ? ` (${NOMS_JEUX[e.classement.jeu]})` : ""}.`}
+                      : `Jouez au ${e.classement.jeu === "tous" ? "jeu de votre choix" : NOMS_JEUX[e.classement.jeu]} pour entrer au classement.`}
                 </span>
               </div>
             )}

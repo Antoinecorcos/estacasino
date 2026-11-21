@@ -906,3 +906,4 @@ input[type="range"] { accent-color: var(--accent); }
 .onglets.petits button { padding: 5px 10px; font-size: 12px; }
 .form-evenement { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 14px; border: 1px dashed rgba(201, 164, 92, 0.5); background: rgba(0, 0, 0, 0.25); }
 .form-evenement .champ > span { font-size: 13px; font-weight: 600; }
+.evt-critere { align-self: flex-start; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: var(--accent-clair); padding: 3px 10px; border-radius: 999px; background: rgba(201, 164, 92, 0.1); border: 1px solid rgba(201, 164, 92, 0.3); }
