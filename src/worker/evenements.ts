@@ -155,22 +155,23 @@ async function vue(db: D1Database, e: Evenement, joueurId: string): Promise<VueE
     const [top, moi] = await db.batch([
       db.prepare(
         `SELECT j.pseudo, j.avatar, ej.valeur FROM evenements_joueurs ej JOIN joueurs j ON j.id = ej.joueur_id
-         WHERE ej.evenement_id = ? AND ej.valeur > 0 AND j.suspendu = 0 AND j.supprime_le IS NULL
+         WHERE ej.evenement_id = ? AND ej.parties > 0 AND j.suspendu = 0 AND j.supprime_le IS NULL
          ORDER BY ej.valeur DESC, ej.parties ASC LIMIT 10`,
       ).bind(e.id),
       db.prepare(
-        `SELECT ej.valeur, ej.recompense,
+        `SELECT ej.valeur, ej.parties, ej.recompense,
            (SELECT COUNT(*) + 1 FROM evenements_joueurs x WHERE x.evenement_id = ej.evenement_id AND x.valeur > ej.valeur) AS rang
          FROM evenements_joueurs ej WHERE ej.evenement_id = ? AND ej.joueur_id = ?`,
       ).bind(e.id, joueurId),
     ]);
-    const m = moi.results[0] as { valeur: number; recompense: number | null; rang: number } | undefined;
+    const m = moi.results[0] as { valeur: number; parties: number; recompense: number | null; rang: number } | undefined;
     return {
       ...base,
       classement: {
         ...p,
         lignes: (top.results as { pseudo: string; avatar: string; valeur: number }[]).map((l, i) => ({ rang: i + 1, pseudo: l.pseudo, avatar: lireAvatar(l.avatar), valeur: l.valeur })),
-        moi: m && m.valeur > 0 ? { rang: m.rang, valeur: m.valeur } : null,
+        // Un participant est classé dès sa première partie, même en perte (gains nets négatifs).
+        moi: m && m.parties > 0 ? { rang: m.rang, valeur: m.valeur } : null,
         cloture: e.cloture,
         maRecompense: m?.recompense ?? null,
       },
@@ -207,7 +208,7 @@ evenements.post("/:id/recuperer", async (c: C) => {
     if ((total?.t ?? 0) < p.cible) return c.json({ erreur: "L'objectif n'est pas encore atteint. On compte sur vous !" }, 409);
     // Une seule fois, et seulement pour ceux qui ont participé.
     const r = await db
-      .prepare("UPDATE evenements_joueurs SET recompense = ?, recompense_le = ? WHERE evenement_id = ? AND joueur_id = ? AND valeur > 0 AND recompense_le IS NULL")
+      .prepare("UPDATE evenements_joueurs SET recompense = ?, recompense_le = ? WHERE evenement_id = ? AND joueur_id = ? AND parties > 0 AND recompense_le IS NULL")
       .bind(p.recompense, now, e.id, moi.id)
       .run();
     if (r.meta.changes !== 1) return c.json({ erreur: "Récompense déjà récupérée, ou vous n'avez pas participé." }, 409);
@@ -239,7 +240,7 @@ export async function cloturerClassement(db: D1Database, e: Evenement): Promise<
   const top = await db
     .prepare(
       `SELECT ej.joueur_id FROM evenements_joueurs ej JOIN joueurs j ON j.id = ej.joueur_id
-       WHERE ej.evenement_id = ? AND ej.valeur > 0 AND j.suspendu = 0 AND j.supprime_le IS NULL
+       WHERE ej.evenement_id = ? AND ej.parties > 0 AND j.suspendu = 0 AND j.supprime_le IS NULL
        ORDER BY ej.valeur DESC, ej.parties ASC LIMIT ?`,
     )
     .bind(e.id, p.recompenses.length)
