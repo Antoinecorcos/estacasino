@@ -11,6 +11,7 @@ import {
   type ParamsClassement,
   type ParamsObjectif,
   type TypeEvenement,
+  TYPES_ADMIN,
   validerParams,
   type Visibilite,
 } from "../../shared/evenements";
@@ -176,9 +177,11 @@ export function AdminEvenements({ apres }: { apres: () => void }) {
       <div className="rangee" style={{ justifyContent: "space-between", gap: 10 }}>
         <h2 className="surtitre">Événements</h2>
         <div className="rangee" style={{ gap: 6 }}>
-          {MODELES.map((m, i) => (
-            <button key={m.nom} type="button" className="btn btn-petit" onClick={() => setEdition(depuisModele(i))}>+ {m.nom}</button>
-          ))}
+          {MODELES.map((m, i) =>
+            TYPES_ADMIN.includes(m.type) ? (
+              <button key={m.nom} type="button" className="btn btn-petit" onClick={() => setEdition(depuisModele(i))}>+ {m.nom}</button>
+            ) : null,
+          )}
         </div>
       </div>
       <p className="muet" style={{ fontSize: 13, margin: 0 }}>
@@ -224,7 +227,8 @@ export function AdminEvenements({ apres }: { apres: () => void }) {
                 const i = MODELES.findIndex((m) => m.type === ev.target.value);
                 setEdition({ ...depuisModele(i), titre: edition.titre, description: edition.description, debut: edition.debut, fin: edition.fin });
               }}>
-                {(Object.keys(NOMS_TYPES) as TypeEvenement[]).map((t) => <option key={t} value={t}>{NOMS_TYPES[t]}</option>)}
+                {/* Un événement déjà créé d'un type masqué (calendrier) garde son option pour rester modifiable. */}
+                {(TYPES_ADMIN.includes(edition.type) ? TYPES_ADMIN : [...TYPES_ADMIN, edition.type]).map((t) => <option key={t} value={t}>{NOMS_TYPES[t]}</option>)}
               </select>
             </label>
             <label className="champ" style={{ flex: "2 1 240px" }}>

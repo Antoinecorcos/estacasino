@@ -47,6 +47,13 @@ export interface Evenement {
   cloture: boolean;
 }
 
+/**
+ * Types proposés dans l'espace Admin. Le calendrier de cadeaux n'y figure pas : sa mécanique est
+ * conservée (base, serveur, affichage joueur) pour une future offre payante, mais on ne le crée plus
+ * depuis l'Admin.
+ */
+export const TYPES_ADMIN: TypeEvenement[] = ["boost", "objectif", "classement"];
+
 export const NOMS_TYPES: Record<TypeEvenement, string> = {
   boost: "Boost (heure dorée)",
   objectif: "Défi collectif",

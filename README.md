@@ -113,14 +113,14 @@ Le script écrit un mot de passe provisoire dans la base en ligne et l'affiche ;
 
 ### Événements (espace Admin → « Événements »)
 
-Quatre types, réglables sans toucher au code :
+Trois types proposés dans l'Admin (un quatrième, le calendrier, est en réserve) :
 
 | Type | Ce qu'il fait |
 |---|---|
 | Boost (heure dorée) | Pendant l'événement, récompenses des défis et/ou bonus quotidien multipliés (×1 à ×5) |
 | Défi collectif | Un total commun (parties ou jetons misés, un jeu ou tous) ; si la cible est atteinte, chaque participant récupère la récompense |
 | Classement éclair | Classement sur la durée de l'événement (gains nets ou parties) ; le podium est payé automatiquement à la fin (tâche planifiée), ou tout de suite avec « Clôturer » |
-| Calendrier de cadeaux | Une case de jetons à ouvrir chaque jour (ex. calendrier de l'Avent) |
+| Calendrier de cadeaux | Une case de jetons à ouvrir chaque jour. **Masqué dans l'Admin** (`TYPES_ADMIN`) : la mécanique est conservée pour une future offre payante |
 
 Chaque événement a une **visibilité** : *Brouillon* (invisible), *Test* (visible et actif pour les admins seulement, pour vérifier), *En ligne* (tous les joueurs). Tant qu'aucun événement n'est en ligne, rien ne change pour les joueurs : ni bandeau, ni carte, ni requête de plus. Une option envoie une notification au démarrage. Les récompenses sont des jetons (type « evenement » dans l'historique) et ne comptent pas dans les gains de saison ; jamais de lot réel. Un changement de visibilité peut mettre jusqu'à 20 secondes à se propager.
 
