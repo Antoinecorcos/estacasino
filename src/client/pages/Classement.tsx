@@ -10,7 +10,9 @@ import { useSession } from "../session";
 interface Reponse {
   saison: { nom: string; debut: number; fin: number } | null;
   minParties: number;
-  lignes: { rang: number; pseudo: string; avatar: ConfigAvatar; gains: number; parties: number; ligue: string | null }[];
+  lignes: { rang: number; pseudo: string; avatar: ConfigAvatar; gains: number; parties: number; ligue: string | null; badges?: string[] }[];
+  /** Saison dont les champions portent un badge (la précédente). */
+  saisonBadges?: string | null;
 }
 
 const ONGLETS = [
@@ -82,6 +84,7 @@ export function Classement() {
                         <Avatar config={l.avatar} taille={36} />
                         <strong className="pseudo-classement">{l.pseudo}</strong>
                         {l.ligue && <span className="col-ligue"><BadgeLigue id={l.ligue} /></span>}
+                        {l.badges?.map((b) => <BadgeChampion key={b} titre={b} saison={donnees.saisonBadges ?? ""} />)}
                       </div>
                     </td>
                     <td className="num" style={{ textAlign: "right", fontWeight: 700, color: l.gains >= 0 ? "var(--accent)" : "var(--carmin-clair)" }}>
@@ -96,9 +99,23 @@ export function Classement() {
           )}
         </div>
         <p className="muet" style={{ fontSize: 13 }}>
-          Les récompenses de fin de saison sont uniquement honorifiques (titres, badges) et ne peuvent pas être achetées.
+          En fin de saison, le premier du classement général et le premier de chaque jeu reçoivent des jetons et un badge de champion,
+          affiché toute la saison suivante. Les récompenses ne peuvent pas être achetées.
         </p>
       </div>
     </Page>
+  );
+}
+
+const NOMS_BADGES: Record<string, string> = { general: "Champion", blackjack: "Champion blackjack", roulette: "Champion roulette", poker: "Champion poker", machine: "Champion machine" };
+
+/** Badge d'un champion de la saison précédente (« Champion S1 », « Champion blackjack S1 »). */
+export function BadgeChampion({ titre, saison }: { titre: string; saison: string }) {
+  const court = saison.replace(/^Saison\s*/i, "S");
+  return (
+    <span className={`badge-champion${titre === "general" ? " general" : ""}`} title={`${NOMS_BADGES[titre] ?? "Champion"} de la ${saison}`}>
+      <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M3 18h18l-1.5-10-5 4L12 4l-2.5 8-5-4z" fill="currentColor" /></svg>
+      {NOMS_BADGES[titre] ?? "Champion"} {court}
+    </span>
   );
 }

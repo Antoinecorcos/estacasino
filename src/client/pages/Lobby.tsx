@@ -14,6 +14,7 @@ import { ENTREES_SNG, NIVEAUX_POKER } from "../../shared/regles";
 import { DefisDuJour } from "../components/Defis";
 import { InvitationRappels } from "../components/Rappels";
 import { EvenementsLobby } from "../components/Evenements";
+import { PalmaresLobby } from "../components/Palmares";
 import { MiniMachine, MiniRoue } from "../components/Vignettes";
 import { BadgeLigue } from "../components/Ligue";
 import { Carte, Page } from "../components/Elements";
@@ -128,6 +129,7 @@ export function Lobby() {
 
         <div className="rangee" style={{ gap: 24, alignItems: "flex-start" }}>
           <section className="pile" style={{ gap: 14, flex: "999 1 560px", minWidth: 0 }}>
+            <PalmaresLobby />
             <EvenementsLobby />
             <h2 className="surtitre">Les tables</h2>
             <div className="grille-jeux">

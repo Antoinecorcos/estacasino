@@ -37,7 +37,9 @@ export function Mentions() {
           Votre <strong>solde total</strong> est conservé d'une saison à l'autre. Le classement repose uniquement sur vos{" "}
           <strong>gains de la saison</strong> (gains moins mises, plus les récompenses des défis quotidiens), remis à zéro au début de
           chaque saison. Le bonus quotidien, le filet de sécurité et les jetons de la boutique n'y comptent pas. Les parties jouées en
-          room privée comptent. Les récompenses de saison sont honorifiques et ne peuvent pas être achetées.
+          room privée comptent. En fin de saison, le premier du classement
+          général et le premier de chaque jeu reçoivent des jetons fictifs et un badge de champion affiché la saison suivante ; ces
+          récompenses ne peuvent pas être achetées et n'ont aucune valeur.
         </p>
 
         <h2>Règles des jeux</h2>

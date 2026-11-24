@@ -351,35 +351,74 @@ export function Admin() {
 
 interface EtatSaison {
   courante: { id: number; nom: string; debut: number; fin: number } | null;
+  recompenses: { general: number; parJeu: number } | null;
+  suivante: { id: number; nom: string; debut: number; fin: number } | null;
   prochainId: number;
   joueurs: { n: number; total: number };
   classes: number;
   forfaits: number;
 }
 
-/** Passage à une nouvelle saison, avec remise à niveau des soldes en option. */
+const champDate = (ms: number) => {
+  const d = new Date(ms);
+  const z = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`;
+};
+const dateLongue = (ms: number) => new Date(ms).toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+
+/** Saison : fin programmée avec récompenses des champions, ou passage immédiat. */
 function CarteSaison({ apres }: { apres: () => void }) {
   const { notifier, rafraichir } = useSession();
   const [etat, setEtat] = useState<EtatSaison | null>(null);
+  const [edition, setEdition] = useState(false);
+  const [finProgrammee, setFinProgrammee] = useState("");
+  const [nomSuivante, setNomSuivante] = useState("");
+  const [general, setGeneral] = useState("25000");
+  const [parJeu, setParJeu] = useState("10000");
+  // Passage immédiat
   const [nom, setNom] = useState("");
-  const [remettre, setRemettre] = useState(true);
+  const [remettre, setRemettre] = useState(false);
   const [solde, setSolde] = useState("20000");
+  const [recompenser, setRecompenser] = useState(true);
   const [fin, setFin] = useState("2027-12-31");
   const [confirmation, setConfirmation] = useState("");
   const [envoi, setEnvoi] = useState(false);
   const charger = () =>
     void api<EtatSaison>("/admin/saison").then((e) => {
       setEtat(e);
-      setNom(`Saison ${e.prochainId - 1}`);
+      const suivant = e.suivante?.nom ?? `Saison ${e.prochainId - 1}`;
+      setNom(suivant);
+      setNomSuivante(suivant);
+      if (e.recompenses) {
+        setGeneral(String(e.recompenses.general));
+        setParJeu(String(e.recompenses.parJeu));
+      }
+      setFinProgrammee(champDate(e.suivante?.debut ?? Date.now() + 7 * 24 * 3600 * 1000));
+      setEdition(false);
     });
   useEffect(charger, []);
   if (!etat) return null;
+  const recompenses = { general: Number(general), parJeu: Number(parJeu) };
+
+  const programmer = async () => {
+    setEnvoi(true);
+    try {
+      await api("/admin/saison/programmer", { corps: { fin: new Date(finProgrammee).getTime(), nom: nomSuivante, recompenses } });
+      notifier(`Fin programmée : « ${nomSuivante} » commencera ${dateLongue(new Date(finProgrammee).getTime())}.`);
+      charger();
+      apres();
+    } catch (e) {
+      notifier((e as Error).message, true);
+    } finally {
+      setEnvoi(false);
+    }
+  };
 
   const lancer = async () => {
     setEnvoi(true);
     try {
-      await api("/admin/saison/nouvelle", { corps: { nom, confirmation, solde: remettre ? Number(solde) : null, fin } });
-      notifier(`« ${nom} » a commencé${remettre ? ` : tous les soldes sont à ${formatJetons(Number(solde))} jetons` : ""}.`);
+      await api("/admin/saison/nouvelle", { corps: { nom, confirmation, solde: remettre ? Number(solde) : null, fin, recompenses: recompenser ? recompenses : null } });
+      notifier(`« ${nom} » a commencé${recompenser ? " ; les champions ont été récompensés" : ""}${remettre ? ` ; tous les soldes sont à ${formatJetons(Number(solde))} jetons` : ""}.`);
       setConfirmation("");
       charger();
       apres();
@@ -391,6 +430,19 @@ function CarteSaison({ apres }: { apres: () => void }) {
     }
   };
 
+  const champsRecompenses = (
+    <div className="rangee" style={{ gap: 10 }}>
+      <label className="champ" style={{ flex: "1 1 180px" }}>
+        <span>Jetons pour le champion du classement général</span>
+        <input className="input" inputMode="numeric" value={general} onChange={(e) => setGeneral(e.target.value.replace(/\D/g, ""))} />
+      </label>
+      <label className="champ" style={{ flex: "1 1 180px" }}>
+        <span>Jetons pour le premier de chaque jeu (s'il n'est pas déjà champion)</span>
+        <input className="input" inputMode="numeric" value={parJeu} onChange={(e) => setParJeu(e.target.value.replace(/\D/g, ""))} />
+      </label>
+    </div>
+  );
+
   return (
     <section className="carte-ui encart carte-saison">
       <h2 className="surtitre">Saison</h2>
@@ -398,37 +450,80 @@ function CarteSaison({ apres }: { apres: () => void }) {
         En cours : <strong>{etat.courante ? `« ${etat.courante.nom} »` : "aucune"}</strong>
         {etat.courante && <span className="muet"> · depuis le {date(etat.courante.debut)} · {etat.classes} joueur(s) au classement</span>}
       </p>
-      <div className="rangee" style={{ gap: 10, alignItems: "flex-end" }}>
-        <label className="champ" style={{ flex: "1 1 180px" }}>
-          <span>Nom de la nouvelle saison</span>
-          <input className="input" value={nom} onChange={(e) => setNom(e.target.value)} maxLength={40} />
-        </label>
-        <label className="champ" style={{ flex: "1 1 160px" }}>
-          <span>Fin prévue</span>
-          <input className="input" type="date" value={fin} onChange={(e) => setFin(e.target.value)} />
-        </label>
-      </div>
-      <label className="case">
-        <input type="checkbox" checked={remettre} onChange={(e) => setRemettre(e.target.checked)} />
-        <span>
-          Remettre tous les soldes à{" "}
-          <input className="input" style={{ width: 110, height: 32, display: "inline-block" }} inputMode="numeric" value={solde} onChange={(e) => setSolde(e.target.value.replace(/[^0-9]/g, ""))} disabled={!remettre} />{" "}
-          jetons ({etat.joueurs.n} joueurs, {formatJetons(etat.joueurs.total)} jetons aujourd'hui). Sinon, les soldes sont conservés.
-        </span>
-      </label>
-      <p className="muet" style={{ fontSize: 13, margin: 0 }}>
-        La saison en cours est clôturée maintenant et son classement archivé ; la nouvelle commence avec un classement vide.
-        {etat.forfaits > 0 && ` ${etat.forfaits} forfait(s) saison de la saison en cours expireront.`} À faire quand personne n'est attablé.
-      </p>
-      <div className="rangee" style={{ gap: 10, alignItems: "flex-end" }}>
-        <label className="champ" style={{ flex: "1 1 220px" }}>
-          <span>Pour confirmer, retapez « {nom} »</span>
-          <input className="input" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} autoComplete="off" />
-        </label>
-        <button type="button" className="btn btn-principal" disabled={envoi || !nom.trim() || confirmation.trim() !== nom.trim() || (remettre && !solde)} onClick={() => void lancer()}>
-          {envoi ? "Passage en cours…" : `Passer à « ${nom} »`}
-        </button>
-      </div>
+
+      {etat.suivante && !edition ? (
+        <div className="fin-programmee">
+          <strong>Fin programmée : {dateLongue(etat.suivante.debut)}</strong>
+          <span>
+            « {etat.courante?.nom} » se termine et « {etat.suivante.nom} » commence à la même minute.
+            {etat.recompenses &&
+              ` Récompenses : ${formatJetons(etat.recompenses.general)} jetons au champion du classement général, ${formatJetons(etat.recompenses.parJeu)} au premier de chaque jeu (blackjack, roulette, poker, machine) s'il est différent, et un badge de champion pour chacun pendant la saison suivante. Versées automatiquement dans le quart d'heure qui suit.`}
+          </span>
+          <button type="button" className="btn btn-petit" style={{ alignSelf: "flex-start" }} onClick={() => setEdition(true)}>Modifier</button>
+        </div>
+      ) : (
+        <div className="form-evenement">
+          <strong>Programmer la fin de la saison</strong>
+          <div className="rangee" style={{ gap: 10 }}>
+            <label className="champ" style={{ flex: "1 1 200px" }}>
+              <span>Fin de « {etat.courante?.nom} »</span>
+              <input className="input" type="datetime-local" value={finProgrammee} onChange={(e) => setFinProgrammee(e.target.value)} />
+            </label>
+            <label className="champ" style={{ flex: "1 1 180px" }}>
+              <span>Saison suivante</span>
+              <input className="input" value={nomSuivante} onChange={(e) => setNomSuivante(e.target.value)} maxLength={40} />
+            </label>
+          </div>
+          {champsRecompenses}
+          <div className="rangee" style={{ gap: 8 }}>
+            <button type="button" className="btn btn-principal" disabled={envoi || !nomSuivante.trim() || !finProgrammee} onClick={() => void programmer()}>Programmer</button>
+            {etat.suivante && <button type="button" className="btn" onClick={() => setEdition(false)}>Annuler</button>}
+          </div>
+        </div>
+      )}
+
+      <details className="passage-immediat">
+        <summary>Passer à une nouvelle saison maintenant</summary>
+        <div className="pile" style={{ gap: 12, marginTop: 12 }}>
+          <div className="rangee" style={{ gap: 10, alignItems: "flex-end" }}>
+            <label className="champ" style={{ flex: "1 1 180px" }}>
+              <span>Nom de la nouvelle saison</span>
+              <input className="input" value={nom} onChange={(e) => setNom(e.target.value)} maxLength={40} />
+            </label>
+            <label className="champ" style={{ flex: "1 1 160px" }}>
+              <span>Fin prévue</span>
+              <input className="input" type="date" value={fin} onChange={(e) => setFin(e.target.value)} />
+            </label>
+          </div>
+          <label className="case">
+            <input type="checkbox" checked={recompenser} onChange={(e) => setRecompenser(e.target.checked)} />
+            <span>Récompenser les champions de la saison qui se termine (montants ci-dessus)</span>
+          </label>
+          {recompenser && champsRecompenses}
+          <label className="case">
+            <input type="checkbox" checked={remettre} onChange={(e) => setRemettre(e.target.checked)} />
+            <span>
+              Remettre tous les soldes à{" "}
+              <input className="input" style={{ width: 110, height: 32, display: "inline-block" }} inputMode="numeric" value={solde} onChange={(e) => setSolde(e.target.value.replace(/[^0-9]/g, ""))} disabled={!remettre} />{" "}
+              jetons ({etat.joueurs.n} joueurs, {formatJetons(etat.joueurs.total)} jetons aujourd'hui). Sinon, les soldes sont conservés.
+            </span>
+          </label>
+          <p className="muet" style={{ fontSize: 13, margin: 0 }}>
+            La saison en cours est clôturée maintenant et son classement archivé ; la nouvelle commence avec un classement vide.
+            {etat.suivante && ` La fin programmée (« ${etat.suivante.nom} ») est remplacée.`}
+            {etat.forfaits > 0 && ` ${etat.forfaits} forfait(s) saison de la saison en cours expireront.`} À faire quand personne n'est attablé.
+          </p>
+          <div className="rangee" style={{ gap: 10, alignItems: "flex-end" }}>
+            <label className="champ" style={{ flex: "1 1 220px" }}>
+              <span>Pour confirmer, retapez « {nom} »</span>
+              <input className="input" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} autoComplete="off" />
+            </label>
+            <button type="button" className="btn btn-principal" disabled={envoi || !nom.trim() || confirmation.trim() !== nom.trim() || (remettre && !solde)} onClick={() => void lancer()}>
+              {envoi ? "Passage en cours…" : `Passer à « ${nom} »`}
+            </button>
+          </div>
+        </div>
+      </details>
     </section>
   );
 }

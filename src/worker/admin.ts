@@ -6,6 +6,7 @@ import { aForfait, crediter, debiter, oublierSaison, saisonCourante } from "./ec
 import { comptesLies } from "./empreintes";
 import { type TypeEvenement, validerParams, type Visibilite } from "../shared/evenements";
 import { cloturerClassement, lireLigne, oublierEvenements } from "./evenements";
+import { distribuerRecompensesSaison, validerRecompenses } from "./saisons";
 import type { Env } from "./env";
 
 // Espace d'administration : réservé aux comptes dont le rôle est « admin ».
@@ -149,8 +150,14 @@ admin.get("/saison", async (c) => {
     db.prepare("SELECT COUNT(*) AS n FROM forfaits_saison WHERE saison_id = ?").bind(courante?.id ?? 0),
   ]);
   const un = <T>(r: D1Result) => r.results[0] as T;
+  const detail = courante
+    ? await db.prepare("SELECT recompenses FROM saisons WHERE id = ?").bind(courante.id).first<{ recompenses: string | null }>()
+    : null;
+  const suivante = await db.prepare("SELECT id, nom, debut, fin FROM saisons WHERE debut > ? ORDER BY debut LIMIT 1").bind(Date.now()).first();
   return c.json({
     courante,
+    recompenses: detail?.recompenses ? JSON.parse(detail.recompenses) : null,
+    suivante,
     prochainId: un<{ id: number }>(prochain).id,
     joueurs: un<{ n: number; total: number }>(joueurs),
     classes: un<{ n: number }>(classes).n,
@@ -164,7 +171,7 @@ admin.get("/saison", async (c) => {
  * (remise à niveau ponctuelle). Tout se fait en une transaction. Le nom doit être retapé pour confirmer.
  */
 admin.post("/saison/nouvelle", async (c) => {
-  const b = (await c.req.json().catch(() => ({}))) as { nom?: string; confirmation?: string; solde?: number | null; fin?: string | null };
+  const b = (await c.req.json().catch(() => ({}))) as { nom?: string; confirmation?: string; solde?: number | null; fin?: string | null; recompenses?: unknown };
   const nom = (b.nom ?? "").trim();
   if (!/^[\p{L}\p{N} '’-]{1,40}$/u.test(nom)) return c.json({ erreur: "Nom de saison invalide." }, 400);
   if ((b.confirmation ?? "").trim() !== nom) return c.json({ erreur: "Retapez exactement le nom de la nouvelle saison pour confirmer." }, 400);
@@ -175,11 +182,18 @@ admin.post("/saison/nouvelle", async (c) => {
   if (!Number.isFinite(fin) || fin <= maintenant + 24 * 3600 * 1000) return c.json({ erreur: "La date de fin doit être dans le futur." }, 400);
   const db = c.env.DB;
   const courante = await saisonCourante(db);
-  const prochain = await db.prepare("SELECT COALESCE(MAX(id), 0) + 1 AS id FROM saisons").first<{ id: number }>();
-  const id = prochain?.id ?? 1;
-  const requetes: D1PreparedStatement[] = [];
-  if (courante) requetes.push(db.prepare("UPDATE saisons SET fin = ? WHERE id = ?").bind(maintenant, courante.id));
-  requetes.push(db.prepare("INSERT INTO saisons (id, nom, debut, fin) VALUES (?, ?, ?, ?)").bind(id, nom, maintenant, fin));
+  const recompenses = b.recompenses === undefined || b.recompenses === null ? null : validerRecompenses(b.recompenses);
+  if (b.recompenses && !recompenses) return c.json({ erreur: "Récompenses invalides." }, 400);
+  const requetes: D1PreparedStatement[] = [
+    // Une saison programmée pour plus tard (pas encore commencée) est remplacée par celle-ci.
+    db.prepare("DELETE FROM saisons WHERE debut > ? AND id NOT IN (SELECT DISTINCT saison_id FROM stats_saison)").bind(maintenant),
+  ];
+  if (courante) {
+    requetes.push(
+      db.prepare("UPDATE saisons SET fin = ?, recompenses = COALESCE(?, recompenses) WHERE id = ?").bind(maintenant, recompenses ? JSON.stringify(recompenses) : null, courante.id),
+    );
+  }
+  requetes.push(db.prepare("INSERT INTO saisons (id, nom, debut, fin) VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM saisons), ?, ?, ?)").bind(nom, maintenant, fin));
   if (solde !== null) {
     // L'écart est inscrit en ajustement juste avant le début de la saison : historique juste, courbe propre.
     requetes.push(
@@ -191,8 +205,45 @@ admin.post("/saison/nouvelle", async (c) => {
   }
   await db.batch(requetes);
   oublierSaison();
+  // Récompenses de la saison qui vient de se terminer : versées tout de suite.
+  if (courante) {
+    const s = await db.prepare("SELECT id, nom, recompenses FROM saisons WHERE id = ?").bind(courante.id).first<{ id: number; nom: string; recompenses: string | null }>();
+    if (s?.recompenses) await distribuerRecompensesSaison(c.env, s);
+  }
   await journaliser(c, "nouvelle_saison", null, { motif: `${courante ? `${courante.nom} → ` : ""}${nom}${solde !== null ? `, soldes à ${solde}` : ""}` });
-  return c.json({ ok: true, id, nom });
+  const nouvelle = await db.prepare("SELECT id FROM saisons WHERE debut = ? AND nom = ?").bind(maintenant, nom).first<{ id: number }>();
+  return c.json({ ok: true, id: nouvelle?.id, nom });
+});
+
+/**
+ * Programmer la fin de la saison en cours à une date donnée : la saison suivante est créée pour
+ * commencer à la même minute (aucun trou), et les récompenses prévues sont versées par la tâche
+ * planifiée dans le quart d'heure qui suit la fin.
+ */
+admin.post("/saison/programmer", async (c) => {
+  const b = (await c.req.json().catch(() => ({}))) as { fin?: number; nom?: string; finSuivante?: string | null; recompenses?: unknown };
+  const db = c.env.DB;
+  const courante = await saisonCourante(db);
+  if (!courante) return c.json({ erreur: "Aucune saison en cours." }, 409);
+  const nom = (b.nom ?? "").trim();
+  if (!/^[\p{L}\p{N} '’-]{1,40}$/u.test(nom)) return c.json({ erreur: "Nom de la saison suivante invalide." }, 400);
+  const fin = Number(b.fin);
+  if (!Number.isFinite(fin) || fin <= Date.now() + 60_000) return c.json({ erreur: "La fin doit être dans le futur (ou utilisez le passage immédiat)." }, 400);
+  const finSuivante = b.finSuivante ? Date.parse(`${b.finSuivante}T23:00:00Z`) : Date.UTC(2027, 11, 31, 23, 0, 0);
+  if (!Number.isFinite(finSuivante) || finSuivante <= fin + 24 * 3600 * 1000) return c.json({ erreur: "La fin de la saison suivante doit être après son début." }, 400);
+  const recompenses = validerRecompenses(b.recompenses);
+  if (!recompenses) return c.json({ erreur: "Récompenses invalides." }, 400);
+  const maintenant = Date.now();
+  await db.batch([
+    db.prepare("DELETE FROM saisons WHERE debut > ? AND id NOT IN (SELECT DISTINCT saison_id FROM stats_saison)").bind(maintenant),
+    db.prepare("UPDATE saisons SET fin = ?, recompenses = ? WHERE id = ?").bind(fin, JSON.stringify(recompenses), courante.id),
+    db.prepare("INSERT INTO saisons (id, nom, debut, fin) VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM saisons), ?, ?, ?)").bind(nom, fin, finSuivante),
+  ]);
+  oublierSaison();
+  await journaliser(c, "fin_saison_programmee", null, {
+    motif: `${courante.nom} → ${nom} le ${new Date(fin).toLocaleString("fr-FR", { timeZone: "Europe/Paris" })} ; ${recompenses.general} au général, ${recompenses.parJeu} par jeu`,
+  });
+  return c.json({ ok: true });
 });
 
 // ───────── Événements ─────────

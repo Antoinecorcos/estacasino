@@ -5,7 +5,7 @@ import { progresserEvenements } from "./evenements";
 // Jetons achetés : type « achat » (pack) ou « forfait » (recharge du forfait saison).
 
 export type TypeTransaction =
-  | "depart" | "bonus" | "filet" | "mise" | "gain" | "remboursement" | "defi" | "cave" | "retrait" | "ajustement" | "achat" | "forfait" | "evenement";
+  | "depart" | "bonus" | "filet" | "mise" | "gain" | "remboursement" | "defi" | "cave" | "retrait" | "ajustement" | "achat" | "forfait" | "evenement" | "saison";
 
 /** Débite un joueur si son solde le permet. Retourne le nouveau solde, ou null si solde insuffisant. */
 export async function debiter(

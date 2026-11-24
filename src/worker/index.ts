@@ -37,6 +37,7 @@ import { creerSessionCheckout, type SessionCheckoutTerminee, verifierSignatureWe
 
 import { admin } from "./admin";
 import { notifications, tacheNotifications } from "./notifications";
+import { badgesSaisonPrecedente, palmaresRecent, tacheSaisons } from "./saisons";
 import { boosts, evenements, evenementsPour, tacheEvenements } from "./evenements";
 import { lireDefis, progresserDefis } from "./defis";
 import { jouerTour, MISES_MACHINE, type Hasard } from "../shared/machine";
@@ -334,6 +335,8 @@ app.get("/moi", async (c) => {
     forfait,
     // Événements visibles (vide tant que rien n'est publié : l'interface reste alors inchangée).
     evenements: evts.map((e) => ({ id: e.id, type: e.type, titre: e.titre, debut: e.debut, fin: e.fin, test: e.visibilite === "admins" })),
+    // Palmarès de la saison qui vient de se terminer (7 jours), pour la carte du lobby.
+    palmares: await palmaresRecent(c.env.DB),
   });
 });
 
@@ -509,15 +512,19 @@ app.get("/classement", async (c) => {
     : jeu === "machine" ? ["gains_machine", "tours_machine"]
     : ["gains_nets", "mains"];
   const lignes = await c.env.DB.prepare(
-    `SELECT j.pseudo, j.avatar, s.${colGains} AS gains, s.${colParties} AS parties
+    `SELECT j.id, j.pseudo, j.avatar, s.${colGains} AS gains, s.${colParties} AS parties
      FROM stats_saison s JOIN joueurs j ON j.id = s.joueur_id
      WHERE s.saison_id = ? AND s.${colParties} >= ? AND j.suspendu = 0 AND j.supprime_le IS NULL
      ORDER BY gains DESC, parties ASC LIMIT 100`,
   )
     .bind(saison.id, CLASSEMENT_MIN_PARTIES)
-    .all<{ pseudo: string; avatar: string; gains: number; parties: number }>();
+    .all<{ id: string; pseudo: string; avatar: string; gains: number; parties: number }>();
+  // Champions de la saison précédente : badge « champion » partout, badge du jeu dans son onglet.
+  const palmares = await badgesSaisonPrecedente(c.env.DB, saison.id);
+  const titresAffiches = (id: string) => (palmares.badges.get(id) ?? []).filter((t) => t === "general" || t === jeu);
   return c.json({
     saison: { nom: saison.nom, debut: saison.debut, fin: saison.fin },
+    saisonBadges: palmares.saison,
     minParties: CLASSEMENT_MIN_PARTIES,
     lignes: lignes.results.map((l, i) => ({
       rang: i + 1,
@@ -527,6 +534,7 @@ app.get("/classement", async (c) => {
       parties: l.parties,
       // La ligue se calcule sur le classement général (gains nets de la saison).
       ligue: jeu === "blackjack" || jeu === "roulette" || jeu === "poker" || jeu === "machine" ? null : ligueDe(l.gains, l.parties, i + 1).id,
+      badges: titresAffiches(l.id),
     })),
   });
 });
@@ -815,7 +823,10 @@ export default {
   /** Tâche planifiée (toutes les 15 minutes) : rappels du bonus du jour et du filet de sécurité. */
   scheduled(_evenement: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(
-      tacheEvenements(env)
+      tacheSaisons(env)
+        .then((n) => n && console.log("fin de saison : palmarès établi", n))
+        .catch((e) => console.error("saisons", e))
+        .then(() => tacheEvenements(env))
         .then((r) => (r.clotures || r.notifies) && console.log("événements", r))
         .catch((e) => console.error("événements", e))
         .then(() => tacheNotifications(env))

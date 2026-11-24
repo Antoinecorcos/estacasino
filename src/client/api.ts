@@ -34,4 +34,6 @@ export interface Moi {
   forfait: boolean;
   /** Événements publiés et visibles par ce joueur (vide la plupart du temps). */
   evenements?: { id: number; type: string; titre: string; debut: number; fin: number; test: boolean }[];
+  /** Palmarès de la saison qui vient de se terminer (pendant 7 jours). */
+  palmares?: { saison: string; champions: { titre: string; pseudo: string; jetons: number }[] } | null;
 }

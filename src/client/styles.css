@@ -907,3 +907,16 @@ input[type="range"] { accent-color: var(--accent); }
 .form-evenement { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 14px; border: 1px dashed rgba(201, 164, 92, 0.5); background: rgba(0, 0, 0, 0.25); }
 .form-evenement .champ > span { font-size: 13px; font-weight: 600; }
 .evt-critere { align-self: flex-start; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: var(--accent-clair); padding: 3px 10px; border-radius: 999px; background: rgba(201, 164, 92, 0.1); border: 1px solid rgba(201, 164, 92, 0.3); }
+
+/* ───── Fin de saison : badges de champion et palmarès ───── */
+.badge-champion { display: inline-flex; align-items: center; gap: 4px; flex: none; white-space: nowrap; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.03em; color: var(--accent-clair); border: 1px solid rgba(201, 164, 92, 0.55); background: rgba(201, 164, 92, 0.1); }
+.badge-champion.general { color: #1a1209; border-color: #fff3c4; background: linear-gradient(180deg, #fff3c4, #e2b85a 55%, #b5801f); box-shadow: 0 0 12px rgba(255, 200, 80, 0.4); }
+@media (max-width: 400px) { .tableau .badge-champion { font-size: 0; gap: 0; padding: 3px 5px; } .tableau .badge-champion svg { width: 12px; height: 12px; } }
+.palmares { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; border-color: #e2b85a; background: radial-gradient(120% 120% at 100% 0%, rgba(255, 200, 80, 0.16), transparent 60%), var(--ardoise); }
+.palmares h3 { font-size: 22px; }
+.palmares-champion { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.25); font-size: 14px; }
+.palmares-champion.general { background: rgba(201, 164, 92, 0.12); border: 1px solid rgba(201, 164, 92, 0.4); }
+.palmares-champion.moi { box-shadow: 0 0 0 2px var(--accent); }
+.fin-programmee { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 12px; border: 1px solid rgba(201, 164, 92, 0.5); background: rgba(201, 164, 92, 0.08); font-size: 14px; }
+.fin-programmee strong { color: var(--accent-clair); text-transform: capitalize; }
+.passage-immediat summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--muet); }
