@@ -38,6 +38,7 @@ import { creerSessionCheckout, type SessionCheckoutTerminee, verifierSignatureWe
 import { admin } from "./admin";
 import { notifications, tacheNotifications } from "./notifications";
 import { badgesSaisonPrecedente, palmaresRecent, tacheSaisons } from "./saisons";
+import { paris, parisVisibles, visibiliteParis } from "./paris";
 import { boosts, evenements, evenementsPour, tacheEvenements } from "./evenements";
 import { lireDefis, progresserDefis } from "./defis";
 import { jouerTour, MISES_MACHINE, type Hasard } from "../shared/machine";
@@ -337,6 +338,8 @@ app.get("/moi", async (c) => {
     evenements: evts.map((e) => ({ id: e.id, type: e.type, titre: e.titre, debut: e.debut, fin: e.fin, test: e.visibilite === "admins" })),
     // Palmarès de la saison qui vient de se terminer (7 jours), pour la carte du lobby.
     palmares: await palmaresRecent(c.env.DB),
+    // Paris sportifs : n'apparaît que lorsque l'option est activée pour ce joueur.
+    ...((await parisVisibles(c.env.DB, moi.role)) ? { paris: true } : {}),
   });
 });
 
@@ -510,7 +513,10 @@ app.get("/classement", async (c) => {
     : jeu === "roulette" ? ["gains_roulette", "tours_roulette"]
     : jeu === "poker" ? ["gains_poker", "mains_poker"]
     : jeu === "machine" ? ["gains_machine", "tours_machine"]
+    : jeu === "paris" ? ["gains_paris", "paris_joues"]
     : ["gains_nets", "mains"];
+  // Classement des paris sportifs : vide tant que l'option est désactivée.
+  if (jeu === "paris" && (await visibiliteParis(c.env.DB)) === "off") return c.json({ saison: { nom: saison.nom, debut: saison.debut, fin: saison.fin }, minParties: CLASSEMENT_MIN_PARTIES, lignes: [] });
   const lignes = await c.env.DB.prepare(
     `SELECT j.id, j.pseudo, j.avatar, s.${colGains} AS gains, s.${colParties} AS parties
      FROM stats_saison s JOIN joueurs j ON j.id = s.joueur_id
@@ -533,7 +539,7 @@ app.get("/classement", async (c) => {
       gains: l.gains,
       parties: l.parties,
       // La ligue se calcule sur le classement général (gains nets de la saison).
-      ligue: jeu === "blackjack" || jeu === "roulette" || jeu === "poker" || jeu === "machine" ? null : ligueDe(l.gains, l.parties, i + 1).id,
+      ligue: jeu === "blackjack" || jeu === "roulette" || jeu === "poker" || jeu === "machine" || jeu === "paris" ? null : ligueDe(l.gains, l.parties, i + 1).id,
       badges: titresAffiches(l.id),
     })),
   });
@@ -811,6 +817,7 @@ app.post("/stripe/webhook", async (c) => {
 app.route("/admin", admin);
 app.route("/notifications", notifications);
 app.route("/evenements", evenements);
+app.route("/paris", paris);
 
 app.notFound((c) => erreur(c, "Introuvable.", 404));
 app.onError((e, c) => {

@@ -124,6 +124,16 @@ Trois types proposés dans l'Admin (un quatrième, le calendrier, est en réserv
 
 Chaque événement a une **visibilité** : *Brouillon* (invisible), *Test* (visible et actif pour les admins seulement, pour vérifier), *En ligne* (tous les joueurs). Tant qu'aucun événement n'est en ligne, rien ne change pour les joueurs : ni bandeau, ni carte, ni requête de plus. Une option envoie une notification au démarrage. Les récompenses sont des jetons (type « evenement » dans l'historique) et ne comptent pas dans les gains de saison ; jamais de lot réel. Un changement de visibilité peut mettre jusqu'à 20 secondes à se propager.
 
+### Fin de saison : champions et palmarès
+
+Une saison peut prévoir des **récompenses de fin** (Admin → carte « Saison » → Programmer, ou migration). À la fin, la tâche planifiée (dans le quart d'heure) verse les jetons, une seule fois : le **champion du classement général** reçoit le montant « général », le **premier de chaque jeu** (blackjack, roulette, poker, machine) le montant « par jeu », sauf s'il est déjà le champion général (il garde le titre et le badge). Il faut au moins 5 parties pour être classé. Les champions reçoivent une notification, apparaissent dans une carte « Palmarès » du lobby pendant 7 jours et portent un **badge** pendant toute la saison suivante : « Champion S1 » dans tous les onglets du classement, « Champion blackjack S1 » (etc.) dans l'onglet de leur jeu. La saison suivante est créée pour commencer à la même minute : aucun trou.
+
+La fin de la **Saison 1** est programmée par la migration 0011 : **lundi 30 novembre 2026 à 23 h 59** (heure de Paris), 25 000 jetons au champion général, 10 000 au premier de chaque jeu ; la Saison 2 démarre à la même minute.
+
+### Paris sportifs (option fantôme)
+
+Désactivés par défaut : ni lien, ni page (introuvable), ni onglet au classement. Admin → « Paris sportifs » : interrupteur **Désactivé / Test (admins) / Ouvert à tous**, et saisie des rencontres (sport, compétition, équipes, coup d'envoi, cotes 1 / N / 2 ; N vide s'il n'y a pas de nul). Les joueurs parient jusqu'au coup d'envoi, au plus la mise maximum de leur ligue par rencontre ; la cote est figée au moment du pari. Après le match, l'admin saisit le résultat : les gagnants reçoivent mise × cote ; une rencontre annulée rembourse toutes les mises. L'Admin indique la marge des cotes saisies (au-dessous de 100 %, les parieurs gagnent en moyenne). Statistiques à part (onglet « Paris sportifs » du classement), hors classement général. Code : `src/shared/paris.ts`, `src/worker/paris.ts`, `src/client/pages/Paris.tsx`, migration 0012.
+
 ### Passer à une nouvelle saison
 
 **Le plus simple : espace Admin → carte « Saison ».** Choisissez le nom, la fin prévue et, si besoin, une remise à niveau des soldes, retapez le nom pour confirmer, et c'est fait (action inscrite au journal). La commande ci-dessous fait la même chose depuis un terminal.

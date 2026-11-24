@@ -4,6 +4,7 @@ import { trouverProduit } from "../../shared/boutique";
 import { formatJetons, formatPrix } from "../../shared/regles";
 import { api } from "../api";
 import { AdminEvenements } from "../components/AdminEvenements";
+import { AdminParis } from "../components/AdminParis";
 import { Avatar } from "../components/Avatar";
 import { Page } from "../components/Elements";
 import { useSession } from "../session";
@@ -54,6 +55,11 @@ const LIBELLES_ACTION: Record<string, string> = {
   evenement_visibilite: "Visibilité d'un événement",
   evenement_supprime: "Événement supprimé",
   evenement_cloture: "Classement clôturé",
+  fin_saison_programmee: "Fin de saison programmée",
+  paris_visibilite: "Option paris sportifs",
+  rencontre_creee: "Rencontre créée",
+  rencontre_reglee: "Rencontre réglée",
+  rencontre_annulee: "Rencontre annulée",
   reactivation: "Réactivation",
 };
 
@@ -319,6 +325,8 @@ export function Admin() {
         </div>
 
         <AdminEvenements apres={recharger} />
+
+        <AdminParis />
 
         <CarteSaison apres={recharger} />
 

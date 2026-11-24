@@ -21,6 +21,7 @@ const ONGLETS = [
   { id: "roulette", nom: "Roulette" },
   { id: "poker", nom: "Poker" },
   { id: "machine", nom: "Machine à sous" },
+  { id: "paris", nom: "Paris sportifs" }, // affiché seulement si l'option est activée pour le joueur
 ] as const;
 
 export function Classement() {
@@ -52,7 +53,7 @@ export function Classement() {
           )}
         </div>
         <div className="onglets" role="group" aria-label="Choix du classement">
-          {ONGLETS.map((o) => (
+          {ONGLETS.filter((o) => o.id !== "paris" || moi?.paris).map((o) => (
             <button key={o.id} type="button" aria-pressed={jeu === o.id} onClick={() => setJeu(o.id)}>
               {o.nom}
             </button>

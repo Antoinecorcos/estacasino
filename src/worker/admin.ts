@@ -7,6 +7,8 @@ import { comptesLies } from "./empreintes";
 import { type TypeEvenement, validerParams, type Visibilite } from "../shared/evenements";
 import { cloturerClassement, lireLigne, oublierEvenements } from "./evenements";
 import { distribuerRecompensesSaison, validerRecompenses } from "./saisons";
+import type { Choix, Rencontre, VisibiliteParis } from "../shared/paris";
+import { annulerRencontre, changerVisibiliteParis, lireSaisieRencontre, reglerRencontre, visibiliteParis } from "./paris";
 import type { Env } from "./env";
 
 // Espace d'administration : réservé aux comptes dont le rôle est « admin ».
@@ -347,6 +349,105 @@ admin.post("/evenements/:id/cloturer", async (c) => {
   const gagnants = await cloturerClassement(c.env.DB, lireLigne(l));
   await journaliser(c, "evenement_cloture", null, { motif: `${l.titre} : ${gagnants} récompense(s)` });
   return c.json({ ok: true, gagnants });
+});
+
+// ───────── Paris sportifs (option fantôme) ─────────
+
+admin.get("/paris", async (c) => {
+  const r = await c.env.DB.prepare(
+    `SELECT r.*,
+       (SELECT COUNT(*) FROM paris p WHERE p.rencontre_id = r.id) AS nb_paris,
+       (SELECT COALESCE(SUM(mise), 0) FROM paris p WHERE p.rencontre_id = r.id) AS total_mises,
+       (SELECT COALESCE(SUM(mise), 0) FROM paris p WHERE p.rencontre_id = r.id AND choix = '1') AS mises1,
+       (SELECT COALESCE(SUM(mise), 0) FROM paris p WHERE p.rencontre_id = r.id AND choix = 'N') AS misesN,
+       (SELECT COALESCE(SUM(mise), 0) FROM paris p WHERE p.rencontre_id = r.id AND choix = '2') AS mises2,
+       (SELECT COALESCE(SUM(gain), 0) FROM paris p WHERE p.rencontre_id = r.id AND statut = 'gagne') AS verse
+     FROM rencontres r WHERE r.debut > ? OR r.statut IN ('brouillon', 'ouverte') ORDER BY r.debut DESC LIMIT 100`,
+  )
+    .bind(Date.now() - 30 * 86400000)
+    .all();
+  return c.json({ visibilite: await visibiliteParis(c.env.DB), rencontres: r.results });
+});
+
+admin.post("/paris/visibilite", async (c) => {
+  const { visibilite } = (await c.req.json().catch(() => ({}))) as { visibilite?: VisibiliteParis };
+  if (!visibilite || !["off", "admins", "tous"].includes(visibilite)) return c.json({ erreur: "Valeur invalide." }, 400);
+  await changerVisibiliteParis(c.env.DB, visibilite);
+  await journaliser(c, "paris_visibilite", null, { motif: visibilite });
+  return c.json({ ok: true });
+});
+
+admin.post("/paris/rencontres", async (c) => {
+  const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown> & { ouverte?: boolean };
+  const s = lireSaisieRencontre(b as Partial<Rencontre>);
+  if ("erreur" in s) return c.json({ erreur: s.erreur }, 400);
+  const v = s.valeur;
+  await c.env.DB.prepare(
+    "INSERT INTO rencontres (sport, competition, equipe1, equipe2, debut, cote1, coteN, cote2, statut, cree_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  )
+    .bind(v.sport, v.competition, v.equipe1, v.equipe2, v.debut, v.cote1, v.coteN, v.cote2, b.ouverte ? "ouverte" : "brouillon", Date.now())
+    .run();
+  await journaliser(c, "rencontre_creee", null, { motif: `${v.equipe1} – ${v.equipe2}` });
+  return c.json({ ok: true });
+});
+
+/** Modifier une rencontre. Les paris déjà pris gardent leur cote. */
+admin.put("/paris/rencontres/:id", async (c) => {
+  const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const s = lireSaisieRencontre(b as Partial<Rencontre>);
+  if ("erreur" in s) return c.json({ erreur: s.erreur }, 400);
+  const v = s.valeur;
+  const r = await c.env.DB.prepare(
+    "UPDATE rencontres SET sport = ?, competition = ?, equipe1 = ?, equipe2 = ?, debut = ?, cote1 = ?, coteN = ?, cote2 = ? WHERE id = ? AND statut IN ('brouillon', 'ouverte')",
+  )
+    .bind(v.sport, v.competition, v.equipe1, v.equipe2, v.debut, v.cote1, v.coteN, v.cote2, Number(c.req.param("id")))
+    .run();
+  if (r.meta.changes !== 1) return c.json({ erreur: "Rencontre introuvable ou déjà réglée." }, 404);
+  return c.json({ ok: true });
+});
+
+admin.post("/paris/rencontres/:id/statut", async (c) => {
+  const { statut } = (await c.req.json().catch(() => ({}))) as { statut?: string };
+  if (statut !== "ouverte" && statut !== "brouillon") return c.json({ erreur: "Statut invalide." }, 400);
+  const r = await c.env.DB.prepare("UPDATE rencontres SET statut = ? WHERE id = ? AND statut IN ('brouillon', 'ouverte')").bind(statut, Number(c.req.param("id"))).run();
+  if (r.meta.changes !== 1) return c.json({ erreur: "Rencontre introuvable ou déjà réglée." }, 404);
+  return c.json({ ok: true });
+});
+
+admin.post("/paris/rencontres/:id/regler", async (c) => {
+  const { resultat } = (await c.req.json().catch(() => ({}))) as { resultat?: Choix };
+  if (!resultat || !["1", "N", "2"].includes(resultat)) return c.json({ erreur: "Résultat invalide." }, 400);
+  const id = Number(c.req.param("id"));
+  const rencontre = await c.env.DB.prepare("SELECT equipe1, equipe2, debut, coteN FROM rencontres WHERE id = ?").bind(id).first<{ equipe1: string; equipe2: string; debut: number; coteN: number | null }>();
+  if (!rencontre) return c.json({ erreur: "Rencontre introuvable." }, 404);
+  if (rencontre.debut > Date.now()) return c.json({ erreur: "La rencontre n'a pas encore commencé." }, 409);
+  if (resultat === "N" && rencontre.coteN === null) return c.json({ erreur: "Pas de match nul possible sur cette rencontre." }, 400);
+  try {
+    const bilan = await reglerRencontre(c.env.DB, id, resultat);
+    await journaliser(c, "rencontre_reglee", null, { motif: `${rencontre.equipe1} – ${rencontre.equipe2} : ${resultat} · ${bilan.gagnants} gagnant(s), ${bilan.verse} versés` });
+    return c.json({ ok: true, ...bilan });
+  } catch (e) {
+    return c.json({ erreur: (e as Error).message }, 409);
+  }
+});
+
+admin.post("/paris/rencontres/:id/annuler", async (c) => {
+  const id = Number(c.req.param("id"));
+  try {
+    const rembourses = await annulerRencontre(c.env.DB, id);
+    await journaliser(c, "rencontre_annulee", null, { motif: `rencontre ${id} · ${rembourses} pari(s) remboursé(s)` });
+    return c.json({ ok: true, rembourses });
+  } catch (e) {
+    return c.json({ erreur: (e as Error).message }, 409);
+  }
+});
+
+admin.delete("/paris/rencontres/:id", async (c) => {
+  const id = Number(c.req.param("id"));
+  const n = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM paris WHERE rencontre_id = ?").bind(id).first<{ n: number }>();
+  if ((n?.n ?? 0) > 0) return c.json({ erreur: "Des paris ont été pris : annulez la rencontre pour les rembourser." }, 409);
+  await c.env.DB.prepare("DELETE FROM rencontres WHERE id = ?").bind(id).run();
+  return c.json({ ok: true });
 });
 
 admin.get("/journal", async (c) => {

@@ -920,3 +920,32 @@ input[type="range"] { accent-color: var(--accent); }
 .fin-programmee { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 12px; border: 1px solid rgba(201, 164, 92, 0.5); background: rgba(201, 164, 92, 0.08); font-size: 14px; }
 .fin-programmee strong { color: var(--accent-clair); text-transform: capitalize; }
 .passage-immediat summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--muet); }
+
+/* ───── Paris sportifs (option fantôme) ───── */
+.grille-rencontres { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.rencontre { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.rencontre.fermee { opacity: 0.85; }
+.rencontre-tete { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muet); text-transform: uppercase; letter-spacing: 0.06em; }
+.rencontre-etat { color: var(--accent); font-weight: 700; white-space: nowrap; }
+.rencontre-equipes { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 18px; }
+.rencontre-equipes .muet { font-size: 13px; }
+.rencontre-cotes { display: grid; gap: 8px; }
+.rencontre-cotes.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.rencontre-cotes.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cote { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 6px; border-radius: 12px; border: 1px solid var(--ligne-2); background: var(--encre); color: var(--ivoire); min-width: 0; transition: border-color 0.15s ease, background 0.15s ease; }
+.cote span { font-size: 12px; color: var(--muet); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cote b { font-size: 18px; color: var(--accent-clair); }
+.cote:hover:not(:disabled) { border-color: var(--accent); }
+.cote[aria-pressed="true"] { border-color: #f6dc82; background: linear-gradient(180deg, #f6dc82, #c99a3e); }
+.cote[aria-pressed="true"] span, .cote[aria-pressed="true"] b { color: #1a1209; }
+.cote:disabled { cursor: default; opacity: 0.55; }
+.cote.gagnante { opacity: 1; border-color: var(--accent); box-shadow: 0 0 12px rgba(255, 200, 80, 0.35); }
+.mon-pari { font-size: 13px; padding: 6px 10px; border-radius: 8px; background: rgba(201, 164, 92, 0.1); color: var(--accent-clair); }
+.ligne-pari { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--ligne); }
+.statut-pari { flex: none; font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--ligne-2); }
+.statut-pari.gagne { color: #1a1209; background: linear-gradient(180deg, #f6dc82, #c99a3e); border-color: transparent; }
+.statut-pari.perdu { color: var(--carmin-clair); }
+.statut-pari.en_cours { color: var(--accent-clair); }
+.bulletin { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: rgba(12, 10, 7, 0.96); border-top: 1px solid var(--accent); box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.5); animation: tuto-monte 0.3s ease both; }
+.bulletin-int { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.bulletin-int b { font-size: 20px; }

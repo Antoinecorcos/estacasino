@@ -59,6 +59,7 @@ export function Entete() {
           <>
             <nav className="nav" aria-label="Navigation principale">
               <Lien href="/">Jouer</Lien>
+              {moi.paris && <Lien href="/paris">Paris</Lien>}
               <Lien href="/classement">Classement</Lien>
               <Lien href="/boutique">Boutique</Lien>
               <Lien href="/profil">Profil</Lien>

@@ -10,6 +10,7 @@ import { Boutique } from "./pages/Boutique";
 import { Classement } from "./pages/Classement";
 import { Lobby } from "./pages/Lobby";
 import { PageMachine } from "./pages/Machine";
+import { PageParis } from "./pages/Paris";
 import { Mentions } from "./pages/Mentions";
 import { TablePoker } from "./pages/Poker";
 import { PokerLobby } from "./pages/PokerLobby";
@@ -60,6 +61,7 @@ function Contenu() {
   if (chemin === "/") return <Lobby />;
   if (chemin === "/blackjack") return <PageBlackjackSolo />;
   if (chemin === "/machine") return <PageMachine />;
+  if (chemin === "/paris" && moi.paris) return <PageParis />;
   if (chemin === "/roulette") return <PageGrandeRoue />;
   if (chemin === "/roulette/solo") return <PageRouletteSolo />;
   if (chemin === "/profil") return <Profil />;

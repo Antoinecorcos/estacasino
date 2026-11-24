@@ -36,4 +36,6 @@ export interface Moi {
   evenements?: { id: number; type: string; titre: string; debut: number; fin: number; test: boolean }[];
   /** Palmarès de la saison qui vient de se terminer (pendant 7 jours). */
   palmares?: { saison: string; champions: { titre: string; pseudo: string; jetons: number }[] } | null;
+  /** Présent seulement quand l'option « paris sportifs » est activée pour ce joueur. */
+  paris?: boolean;
 }
