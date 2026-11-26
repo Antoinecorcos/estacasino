@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { type Choix, coteDe, gainPotentiel, libelleChoix, PARI_MIN, type Pari, type Rencontre } from "../../shared/paris";
+import { type Choix, COTE_PARIABLE_MIN, coteDe, gainPotentiel, libelleChoix, PARI_MIN, type Pari, pariable, type Rencontre } from "../../shared/paris";
 import { formatJetons } from "../../shared/regles";
 import { api } from "../api";
 import { Page } from "../components/Elements";
@@ -70,7 +70,8 @@ export function PageParis() {
           <div className="surtitre">Paris sportifs</div>
           <h1 style={{ fontSize: 40 }}>Le comptoir des paris</h1>
           <p className="muet" style={{ maxWidth: 640, margin: 0 }}>
-            Pariez vos jetons sur les vrais matchs. La cote est figée au moment du pari, et les paris ferment au coup d'envoi.
+            Pariez vos jetons sur les vrais matchs. La cote est figée au moment du pari, et les paris ferment au coup d'envoi. On ne
+            parie pas sous {cote(COTE_PARIABLE_MIN)}, et c'est 5 000 jetons au plus par match.
           </p>
           {donnees?.test && <span className="badge-test" style={{ alignSelf: "flex-start" }}>Test : visible des admins seulement</span>}
         </div>
@@ -108,9 +109,11 @@ export function PageParis() {
                           {choix.map((c) => {
                             const actif = selection?.r.id === r.id && selection.choix === c;
                             const gagnant = r.statut === "reglee" && r.resultat === c;
+                            const bloquee = !pariable(coteDe(r, c));
                             return (
                               <button
-                                key={c} type="button" disabled={ferme} aria-pressed={actif}
+                                key={c} type="button" disabled={ferme || bloquee} aria-pressed={actif}
+                                title={bloquee ? `Cote trop faible : on ne parie pas sous ${cote(COTE_PARIABLE_MIN)}` : undefined}
                                 className={`cote${gagnant ? " gagnante" : ""}`}
                                 onClick={() => setSelection(actif ? null : { r, choix: c })}
                               >
@@ -158,8 +161,8 @@ export function PageParis() {
         )}
 
         <p className="muet" style={{ fontSize: 13 }}>
-          Jetons fictifs, sans aucune valeur : on ne gagne jamais d'argent. Résultats saisis par l'équipe Estacasino ; une rencontre
-          annulée ou reportée est remboursée.
+          Jetons fictifs, sans aucune valeur : on ne gagne jamais d'argent. Les cotes sont celles d'Estacasino. Résultat au coup
+          de sifflet final du temps réglementaire (sans prolongations ni tirs au but) ; une rencontre annulée ou reportée est remboursée.
         </p>
       </div>
 

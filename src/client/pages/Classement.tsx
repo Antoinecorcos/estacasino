@@ -108,7 +108,7 @@ export function Classement() {
   );
 }
 
-const NOMS_BADGES: Record<string, string> = { general: "Champion", blackjack: "Champion blackjack", roulette: "Champion roulette", poker: "Champion poker", machine: "Champion machine" };
+const NOMS_BADGES: Record<string, string> = { general: "Champion", blackjack: "Champion blackjack", roulette: "Champion roulette", poker: "Champion poker", machine: "Champion machine", paris: "Champion des paris" };
 
 /** Badge d'un champion de la saison précédente (« Champion S1 », « Champion blackjack S1 »). */
 export function BadgeChampion({ titre, saison }: { titre: string; saison: string }) {

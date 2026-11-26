@@ -39,6 +39,7 @@ import { admin } from "./admin";
 import { notifications, tacheNotifications } from "./notifications";
 import { badgesSaisonPrecedente, palmaresRecent, tacheSaisons } from "./saisons";
 import { paris, parisVisibles, visibiliteParis } from "./paris";
+import { tacheParisFoot } from "./foot";
 import { boosts, evenements, evenementsPour, tacheEvenements } from "./evenements";
 import { lireDefis, progresserDefis } from "./defis";
 import { jouerTour, MISES_MACHINE, type Hasard } from "../shared/machine";
@@ -833,6 +834,9 @@ export default {
       tacheSaisons(env)
         .then((n) => n && console.log("fin de saison : palmarès établi", n))
         .catch((e) => console.error("saisons", e))
+        .then(() => tacheParisFoot(env))
+        .then((r) => (r.ouvertes || r.reglees || r.erreur) && console.log("paris foot", r))
+        .catch((e) => console.error("paris foot", e))
         .then(() => tacheEvenements(env))
         .then((r) => (r.clotures || r.notifies) && console.log("événements", r))
         .catch((e) => console.error("événements", e))

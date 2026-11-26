@@ -9,7 +9,7 @@ import { notifierJoueur } from "./notifications";
 //  - chaque jeu : le premier reçoit `parJeu` jetons, sauf s'il est déjà le champion général
 //    (il garde alors le titre et le badge du jeu, sans jetons en plus).
 
-export type TitrePalmares = "general" | "blackjack" | "roulette" | "poker" | "machine";
+export type TitrePalmares = "general" | "blackjack" | "roulette" | "poker" | "machine" | "paris";
 export interface RecompensesSaison {
   general: number;
   parJeu: number;
@@ -21,6 +21,7 @@ export const NOMS_TITRES: Record<TitrePalmares, string> = {
   roulette: "roulette",
   poker: "poker",
   machine: "machine à sous",
+  paris: "paris sportifs",
 };
 
 /** Colonnes du classement de chaque titre (mêmes règles que la page Classement). */
@@ -30,6 +31,7 @@ const COLONNES: Record<TitrePalmares, [gains: string, parties: string]> = {
   roulette: ["gains_roulette", "tours_roulette"],
   poker: ["gains_poker", "mains_poker"],
   machine: ["gains_machine", "tours_machine"],
+  paris: ["gains_paris", "paris_joues"],
 };
 
 export function validerRecompenses(r: unknown): RecompensesSaison | null {
@@ -69,7 +71,7 @@ export async function distribuerRecompensesSaison(
   const resultat: { titre: TitrePalmares; pseudo: string; jetons: number; id: string }[] = [];
   const champion = await premier(db, saison.id, "general");
   if (champion) resultat.push({ titre: "general", pseudo: champion.pseudo, id: champion.id, jetons: r.general });
-  for (const titre of ["blackjack", "roulette", "poker", "machine"] as const) {
+  for (const titre of ["blackjack", "roulette", "poker", "machine", "paris"] as const) {
     const p = await premier(db, saison.id, titre);
     if (p) resultat.push({ titre, pseudo: p.pseudo, id: p.id, jetons: p.id === champion?.id ? 0 : r.parJeu });
   }
@@ -145,7 +147,7 @@ export async function palmaresRecent(db: D1Database): Promise<PalmaresRecent | n
     const r = await db
       .prepare(
         `SELECT p.titre, j.pseudo, p.jetons FROM palmares p JOIN joueurs j ON j.id = p.joueur_id WHERE p.saison_id = ?
-         ORDER BY CASE p.titre WHEN 'general' THEN 0 WHEN 'blackjack' THEN 1 WHEN 'roulette' THEN 2 WHEN 'poker' THEN 3 ELSE 4 END`,
+         ORDER BY CASE p.titre WHEN 'general' THEN 0 WHEN 'blackjack' THEN 1 WHEN 'roulette' THEN 2 WHEN 'poker' THEN 3 WHEN 'machine' THEN 4 ELSE 5 END`,
       )
       .bind(s.id)
       .all<{ titre: TitrePalmares; pseudo: string; jetons: number }>();

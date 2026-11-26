@@ -4,7 +4,7 @@ import { Lien } from "../router";
 import { useSession } from "../session";
 
 // Carte « Palmarès » du lobby : pendant les 7 jours qui suivent la fin d'une saison récompensée.
-const NOMS: Record<string, string> = { general: "Classement général", blackjack: "Blackjack", roulette: "Roulette", poker: "Poker", machine: "Machine à sous" };
+const NOMS: Record<string, string> = { general: "Classement général", blackjack: "Blackjack", roulette: "Roulette", poker: "Poker", machine: "Machine à sous", paris: "Paris sportifs" };
 
 export function PalmaresLobby() {
   const { moi } = useSession();

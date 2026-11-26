@@ -6,7 +6,15 @@ import { useSession } from "../session";
 
 // Paris sportifs dans l'espace Admin : l'interrupteur de l'option, et la saisie des rencontres.
 
-type Ligne = Rencontre & { nb_paris: number; total_mises: number; mises1: number; misesN: number; mises2: number; verse: number };
+type Ligne = Rencontre & {
+  nb_paris: number; total_mises: number; mises1: number; misesN: number; mises2: number; verse: number;
+  source: "manuel" | "api"; selection: number; ouverture_auto: number | null; interet: number | null;
+};
+interface Auto {
+  cle: boolean;
+  requetes: number;
+  bilan: { jour: string; le: number; matchsDuJour: number; candidats: number; retenus: string[]; erreur?: string } | null;
+}
 
 const VIS: { id: VisibiliteParis; nom: string }[] = [
   { id: "off", nom: "Désactivé" },
@@ -41,9 +49,10 @@ const vide = (): Saisie => {
 
 export function AdminParis() {
   const { notifier, rafraichir } = useSession();
-  const [donnees, setDonnees] = useState<{ visibilite: VisibiliteParis; rencontres: Ligne[] } | null>(null);
+  const [donnees, setDonnees] = useState<{ visibilite: VisibiliteParis; rencontres: Ligne[]; auto: Auto } | null>(null);
   const [saisie, setSaisie] = useState<Saisie | null>(null);
-  const charger = () => void api<{ visibilite: VisibiliteParis; rencontres: Ligne[] }>("/admin/paris").then(setDonnees);
+  const [occupe, setOccupe] = useState(false);
+  const charger = () => void api<{ visibilite: VisibiliteParis; rencontres: Ligne[]; auto: Auto }>("/admin/paris").then(setDonnees);
   useEffect(charger, []);
   if (!donnees) return null;
 
@@ -79,6 +88,34 @@ export function AdminParis() {
       void action(`/admin/paris/rencontres/${r.id}/regler`, { resultat: c }, "Rencontre réglée : {gagnants} gagnant(s), {verse} jetons versés.");
   };
 
+  const tester = async () => {
+    setOccupe(true);
+    try {
+      const r = await api<{ plan: string; requetes: number; limite: number }>("/admin/paris/auto/tester", { corps: {} });
+      notifier(`API-Football connectée : offre ${r.plan}, ${r.requetes} / ${r.limite} requêtes aujourd'hui.`);
+    } catch (e) {
+      notifier((e as Error).message, true);
+    } finally {
+      setOccupe(false);
+      charger();
+    }
+  };
+  const selectionner = async (jour: "aujourdhui" | "demain") => {
+    setOccupe(true);
+    try {
+      const r = await api<{ bilan: Auto["bilan"] }>("/admin/paris/auto/selectionner", { corps: { jour } });
+      notifier(r.bilan?.retenus.length ? `Retenus : ${r.bilan.retenus.join(" · ")}` : "Aucun match assez intéressant ce jour-là.");
+    } catch (e) {
+      notifier((e as Error).message, true);
+    } finally {
+      setOccupe(false);
+      charger();
+    }
+  };
+  const visibles = donnees.rencontres.filter((r) => r.source !== "api" || r.selection === 1);
+  const remplacants = (r: Ligne) =>
+    donnees.rencontres.filter((x) => x.source === "api" && x.selection === 0 && x.statut === "brouillon" && new Date(x.debut).toDateString() === new Date(r.debut).toDateString());
+
   const marge = saisie && saisie.cote1 && saisie.cote2 ? sommeProbabilites({ cote1: nombre(saisie.cote1), cote2: nombre(saisie.cote2), coteN: saisie.coteN ? nombre(saisie.coteN) : null }) : null;
   const now = Date.now();
 
@@ -98,18 +135,53 @@ export function AdminParis() {
           : donnees.visibilite === "admins"
             ? "Mode test : seuls les admins voient le lien « Paris » et peuvent parier."
             : "Ouvert à tous les joueurs."}{" "}
-        Les paris ferment au coup d'envoi ; saisissez le résultat après le match pour payer les gagnants (mise × cote figée).
+        Les paris ferment au coup d'envoi. Matchs importés : résultat et paiement automatiques. Rencontres saisies à la main : saisissez le résultat après le match (mise × cote figée).
       </p>
 
-      {donnees.rencontres.map((r) => {
+      <div className="auto-foot">
+        <strong>Sélection automatique (foot)</strong>
+        {!donnees.auto.cle ? (
+          <span className="muet" style={{ fontSize: 13 }}>
+            Inactive : ajoutez la clé API-Football dans Cloudflare (secret <code>API_FOOTBALL_KEY</code>). Ensuite, chaque jour vers 10 h, les 2 matchs les plus intéressants du lendemain sont proposés ici, et leurs paris s'ouvrent seuls la veille à 20 h.
+          </span>
+        ) : (
+          <>
+            <span className="muet" style={{ fontSize: 13 }}>
+              Chaque jour vers 10 h : 2 matchs du lendemain proposés (ouverture automatique la veille à 20 h, sauf si vous les retirez). Résultats et paiements automatiques.
+              Cotes Estacasino : 95 % redistribués, plafond 6, pari impossible sous 1,10, 5 000 jetons au plus par match. Requêtes aujourd'hui : {donnees.auto.requetes} / 90.
+            </span>
+            {donnees.auto.bilan && (
+              <span style={{ fontSize: 13 }}>
+                Dernière sélection ({new Date(donnees.auto.bilan.le).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}, pour le {donnees.auto.bilan.jour}) :{" "}
+                {donnees.auto.bilan.erreur
+                  ? <span className="accent">erreur : {donnees.auto.bilan.erreur}</span>
+                  : donnees.auto.bilan.retenus.length
+                    ? donnees.auto.bilan.retenus.join(" · ")
+                    : `aucun match assez intéressant (${donnees.auto.bilan.matchsDuJour} matchs ce jour-là)`}
+              </span>
+            )}
+            <div className="rangee" style={{ gap: 6 }}>
+              <button type="button" className="btn btn-petit" disabled={occupe} onClick={() => void tester()}>Tester la connexion</button>
+              <button type="button" className="btn btn-petit" disabled={occupe} onClick={() => void selectionner("demain")}>Chercher les matchs de demain</button>
+              <button type="button" className="btn btn-petit" disabled={occupe} onClick={() => void selectionner("aujourdhui")}>… d'aujourd'hui</button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {visibles.map((r) => {
         const commencee = now >= r.debut;
+        const propose = r.source === "api" && r.statut === "brouillon" && r.ouverture_auto;
+        const alternatives = propose ? remplacants(r) : [];
         return (
           <div key={r.id} className={`ligne-evenement vis-${r.statut === "ouverte" ? "tous" : r.statut === "brouillon" ? "brouillon" : "admins"}`}>
             <div className="pile" style={{ gap: 2, minWidth: 0, flex: "1 1 260px" }}>
               <strong>{r.equipe1} – {r.equipe2} <span className="muet" style={{ fontWeight: 400 }}>· {r.sport}{r.competition ? ` · ${r.competition}` : ""}</span></strong>
               <span className="muet" style={{ fontSize: 12 }}>
                 {dateCourte(r.debut)} · cotes {r.cote1} / {r.coteN ?? "–"} / {r.cote2} ·{" "}
-                {r.statut === "brouillon" ? "brouillon" : r.statut === "ouverte" ? (commencee ? "en cours, paris fermés" : "paris ouverts") : r.statut === "reglee" ? `réglée (${r.resultat})` : "annulée"}
+                {propose
+                  ? `proposé (intérêt ${r.interet ?? "?"}) · ouverture automatique ${dateCourte(r.ouverture_auto!)}`
+                  : r.statut === "brouillon" ? "brouillon" : r.statut === "ouverte" ? (commencee ? "en cours, paris fermés" : "paris ouverts") : r.statut === "reglee" ? `réglée (${r.resultat})` : "annulée"}
                 {" · "}{r.nb_paris} pari(s), {formatJetons(r.total_mises)} misés (1 : {formatJetons(r.mises1)}{r.coteN ? `, N : ${formatJetons(r.misesN)}` : ""}, 2 : {formatJetons(r.mises2)})
                 {r.statut === "reglee" ? ` · ${formatJetons(r.verse)} versés` : ""}
               </span>
@@ -118,9 +190,16 @@ export function AdminParis() {
               <div className="rangee" style={{ gap: 6 }}>
                 {!commencee && (
                   <button type="button" className="btn btn-petit" onClick={() => void action(`/admin/paris/rencontres/${r.id}/statut`, { statut: r.statut === "ouverte" ? "brouillon" : "ouverte" }, r.statut === "ouverte" ? "Paris suspendus (brouillon)." : "Paris ouverts.")}>
-                    {r.statut === "ouverte" ? "Suspendre" : "Ouvrir les paris"}
+                    {r.statut === "ouverte" ? "Suspendre" : propose ? "Valider et ouvrir" : "Ouvrir les paris"}
                   </button>
                 )}
+                {propose && alternatives.length > 0 && (
+                  <select className="input" style={{ height: 34, width: "auto", fontSize: 13 }} aria-label="Remplacer par" value="" onChange={(e) => e.target.value && void action(`/admin/paris/rencontres/${r.id}/remplacer`, { par: Number(e.target.value) }, "Match remplacé.")}>
+                    <option value="">Remplacer par…</option>
+                    {alternatives.map((a) => <option key={a.id} value={a.id}>{a.equipe1} – {a.equipe2} ({a.competition})</option>)}
+                  </select>
+                )}
+                {r.source === "api" && !commencee && <button type="button" className="btn btn-petit" onClick={() => void action(`/admin/paris/rencontres/${r.id}/cotes`, {}, "Cotes recalculées.")}>Cotes</button>}
                 <button type="button" className="btn btn-petit" onClick={() => setSaisie({ id: r.id, sport: r.sport, competition: r.competition, equipe1: r.equipe1, equipe2: r.equipe2, debut: versChamp(r.debut), cote1: String(r.cote1), coteN: r.coteN ? String(r.coteN) : "", cote2: String(r.cote2), ouverte: r.statut === "ouverte" })}>Modifier</button>
                 {commencee && (
                   <>
@@ -131,7 +210,7 @@ export function AdminParis() {
                   </>
                 )}
                 <button type="button" className="btn btn-petit" onClick={() => confirm("Annuler la rencontre et rembourser toutes les mises ?") && void action(`/admin/paris/rencontres/${r.id}/annuler`, {}, "Rencontre annulée : {rembourses} pari(s) remboursé(s).")}>Annuler</button>
-                {r.nb_paris === 0 && <button type="button" className="btn btn-petit" onClick={() => void action(`/admin/paris/rencontres/${r.id}`, undefined, "Rencontre supprimée.", "DELETE")}>Supprimer</button>}
+                {r.nb_paris === 0 && <button type="button" className="btn btn-petit" onClick={() => void action(`/admin/paris/rencontres/${r.id}`, undefined, propose ? "Match retiré." : "Rencontre supprimée.", "DELETE")}>{propose ? "Retirer" : "Supprimer"}</button>}
               </div>
             )}
           </div>

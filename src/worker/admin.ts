@@ -9,6 +9,8 @@ import { cloturerClassement, lireLigne, oublierEvenements } from "./evenements";
 import { distribuerRecompensesSaison, validerRecompenses } from "./saisons";
 import type { Choix, Rencontre, VisibiliteParis } from "../shared/paris";
 import { annulerRencontre, changerVisibiliteParis, lireSaisieRencontre, reglerRencontre, visibiliteParis } from "./paris";
+import { dernierBilan, etatCompte, rafraichirCotes, requetesDuJour, selectionnerJour } from "./foot";
+import { jourParis } from "./economie";
 import type { Env } from "./env";
 
 // Espace d'administration : réservé aux comptes dont le rôle est « admin ».
@@ -366,7 +368,56 @@ admin.get("/paris", async (c) => {
   )
     .bind(Date.now() - 30 * 86400000)
     .all();
-  return c.json({ visibilite: await visibiliteParis(c.env.DB), rencontres: r.results });
+  return c.json({
+    visibilite: await visibiliteParis(c.env.DB),
+    rencontres: r.results,
+    auto: { cle: !!c.env.API_FOOTBALL_KEY, bilan: await dernierBilan(c.env.DB), requetes: await requetesDuJour(c.env.DB) },
+  });
+});
+
+/** Tester la connexion à API-Football (offre et quota). */
+admin.post("/paris/auto/tester", async (c) => {
+  try {
+    return c.json({ ok: true, ...(await etatCompte(c.env)) });
+  } catch (e) {
+    return c.json({ erreur: (e as Error).message }, 502);
+  }
+});
+
+/** Lancer la sélection maintenant (par défaut pour demain ; ou pour aujourd'hui). */
+admin.post("/paris/auto/selectionner", async (c) => {
+  const { jour } = (await c.req.json().catch(() => ({}))) as { jour?: "aujourdhui" | "demain" };
+  const cible = jourParis(Date.now() + (jour === "aujourdhui" ? 0 : 24 * 3600 * 1000));
+  const bilan = await selectionnerJour(c.env, cible);
+  await journaliser(c, "paris_selection", null, { motif: `${cible} : ${bilan.retenus.join(", ") || bilan.erreur || "aucun match retenu"}` });
+  return bilan.erreur ? c.json({ erreur: bilan.erreur, bilan }, 502) : c.json({ ok: true, bilan });
+});
+
+/** Remplacer un match proposé par l'un de ses remplaçants (même jour, aucun pari pris). */
+admin.post("/paris/rencontres/:id/remplacer", async (c) => {
+  const db = c.env.DB;
+  const id = Number(c.req.param("id"));
+  const { par } = (await c.req.json().catch(() => ({}))) as { par?: number };
+  const actuel = await db.prepare("SELECT ouverture_auto FROM rencontres WHERE id = ? AND source = 'api' AND selection = 1 AND statut = 'brouillon'").bind(id).first<{ ouverture_auto: number | null }>();
+  const paris = await db.prepare("SELECT COUNT(*) AS n FROM paris WHERE rencontre_id = ?").bind(id).first<{ n: number }>();
+  if (!actuel || paris?.n) return c.json({ erreur: "Seul un match proposé, pas encore ouvert, peut être remplacé." }, 409);
+  const r = await db.prepare("UPDATE rencontres SET selection = 1, ouverture_auto = ? WHERE id = ? AND source = 'api' AND selection = 0 AND statut = 'brouillon'").bind(actuel.ouverture_auto, Number(par)).run();
+  if (r.meta.changes !== 1) return c.json({ erreur: "Remplaçant introuvable." }, 404);
+  await db.prepare("UPDATE rencontres SET selection = 0, ouverture_auto = NULL WHERE id = ?").bind(id).run();
+  return c.json({ ok: true });
+});
+
+/** Recalculer les cotes d'un match importé (les paris déjà pris gardent la leur). */
+admin.post("/paris/rencontres/:id/cotes", async (c) => {
+  const id = Number(c.req.param("id"));
+  const r = await c.env.DB.prepare("SELECT fixture_id FROM rencontres WHERE id = ? AND source = 'api'").bind(id).first<{ fixture_id: number }>();
+  if (!r) return c.json({ erreur: "Rencontre importée introuvable." }, 404);
+  try {
+    if (!(await rafraichirCotes(c.env, id, r.fixture_id))) return c.json({ erreur: "Pas de cotes disponibles pour ce match." }, 409);
+    return c.json({ ok: true });
+  } catch (e) {
+    return c.json({ erreur: (e as Error).message }, 502);
+  }
 });
 
 admin.post("/paris/visibilite", async (c) => {
@@ -409,7 +460,10 @@ admin.put("/paris/rencontres/:id", async (c) => {
 admin.post("/paris/rencontres/:id/statut", async (c) => {
   const { statut } = (await c.req.json().catch(() => ({}))) as { statut?: string };
   if (statut !== "ouverte" && statut !== "brouillon") return c.json({ erreur: "Statut invalide." }, 400);
-  const r = await c.env.DB.prepare("UPDATE rencontres SET statut = ? WHERE id = ? AND statut IN ('brouillon', 'ouverte')").bind(statut, Number(c.req.param("id"))).run();
+  // Suspendre annule aussi l'ouverture automatique (sinon la tâche planifiée rouvrirait le match).
+  const r = await c.env.DB.prepare("UPDATE rencontres SET statut = ?1, ouverture_auto = CASE WHEN ?1 = 'brouillon' THEN NULL ELSE ouverture_auto END WHERE id = ?2 AND statut IN ('brouillon', 'ouverte')")
+    .bind(statut, Number(c.req.param("id")))
+    .run();
   if (r.meta.changes !== 1) return c.json({ erreur: "Rencontre introuvable ou déjà réglée." }, 404);
   return c.json({ ok: true });
 });

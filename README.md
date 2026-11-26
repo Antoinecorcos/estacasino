@@ -132,7 +132,21 @@ La fin de la **Saison 1** est programmée par la migration 0011 : **lundi 30 nov
 
 ### Paris sportifs (option fantôme)
 
-Désactivés par défaut : ni lien, ni page (introuvable), ni onglet au classement. Admin → « Paris sportifs » : interrupteur **Désactivé / Test (admins) / Ouvert à tous**, et saisie des rencontres (sport, compétition, équipes, coup d'envoi, cotes 1 / N / 2 ; N vide s'il n'y a pas de nul). Les joueurs parient jusqu'au coup d'envoi, au plus la mise maximum de leur ligue par rencontre ; la cote est figée au moment du pari. Après le match, l'admin saisit le résultat : les gagnants reçoivent mise × cote ; une rencontre annulée rembourse toutes les mises. L'Admin indique la marge des cotes saisies (au-dessous de 100 %, les parieurs gagnent en moyenne). Statistiques à part (onglet « Paris sportifs » du classement), hors classement général. Code : `src/shared/paris.ts`, `src/worker/paris.ts`, `src/client/pages/Paris.tsx`, migration 0012.
+Désactivés par défaut : ni lien, ni page (introuvable), ni onglet au classement. Admin → « Paris sportifs » : interrupteur **Désactivé / Test (admins) / Ouvert à tous**, et saisie des rencontres (sport, compétition, équipes, coup d'envoi, cotes 1 / N / 2 ; N vide s'il n'y a pas de nul). Les joueurs parient jusqu'au coup d'envoi, au plus la mise maximum de leur ligue par rencontre ; la cote est figée au moment du pari. Après le match, l'admin saisit le résultat : les gagnants reçoivent mise × cote ; une rencontre annulée rembourse toutes les mises. L'Admin indique la marge des cotes saisies (au-dessous de 100 %, les parieurs gagnent en moyenne). Règles communes : pas de pari sur une cote inférieure à 1,10, 5 000 jetons au plus par match (ou moins si la ligue le prévoit), cotes plafonnées à 6. Les paris comptent dans le classement général (gain net, une partie par pari) et ont leur propre onglet « Paris sportifs », avec un titre de champion en fin de saison. Code : `src/shared/paris.ts`, `src/worker/paris.ts`, `src/client/pages/Paris.tsx`, migrations 0012 et 0013.
+
+#### Matchs de foot automatiques (API-Football)
+
+1. Créer un compte gratuit sur https://dashboard.api-football.com (offre Free : 100 requêtes par jour) et copier la clé.
+2. Cloudflare → Workers → estacasino → Settings → Variables and Secrets → **Add** → type *Secret*, nom `API_FOOTBALL_KEY`, valeur = la clé. Ne jamais la mettre dans le code ni la coller dans une discussion.
+3. Admin → Paris sportifs → « Tester la connexion ». L'offre gratuite peut limiter les saisons accessibles : « Chercher les matchs de demain » montre tout de suite si les matchs et les cotes arrivent.
+
+Ensuite, tout est automatique (tâche planifiée toutes les 15 minutes, au plus 90 requêtes par jour) :
+- vers 10 h, les 2 matchs les plus intéressants du lendemain sont choisis (Ligue des champions, Ligue 1, grands championnats, Coupe de France ; équipes populaires, affiches, soirée, match serré), entre 12 h et 23 h. Ils apparaissent dans l'Admin comme « proposés », avec des remplaçants : Valider et ouvrir, Remplacer par…, Retirer, Cotes (recalcul) ;
+- sans intervention, leurs paris s'ouvrent la veille à 20 h ; « Annuler » (suspendre) empêche cette ouverture ;
+- cotes Estacasino : moyenne des bookmakers sans leur marge, puis 95 % redistribués (cote = 0,95 / probabilité, arrondie vers le bas, entre 1,01 et 6). Elles sont recalculées une fois le matin du match ; un pari garde sa cote ;
+- environ 2 h après le coup d'envoi, le résultat du temps réglementaire est lu et les gagnants payés ; un match reporté, annulé ou arrêté est remboursé.
+
+Rien de tout cela n'est visible des joueurs tant que l'option est sur « Désactivé ». Code : `src/shared/foot.ts` (sélection et cotes, testés), `src/worker/foot.ts`.
 
 ### Passer à une nouvelle saison
 

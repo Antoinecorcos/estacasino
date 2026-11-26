@@ -15,4 +15,8 @@ export interface Env {
   STRIPE_SECRET_KEY?: string;
   /** Secret : secret de signature du webhook Stripe (whsec_…). */
   STRIPE_WEBHOOK_SECRET?: string;
+  /** Secret : clé API-Football (paris foot automatiques). Absente : pas d'import automatique. */
+  API_FOOTBALL_KEY?: string;
+  /** Adresse de l'API (par défaut https://v3.football.api-sports.io ; changée seulement pour les tests). */
+  API_FOOTBALL_URL?: string;
 }

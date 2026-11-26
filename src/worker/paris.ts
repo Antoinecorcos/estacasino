@@ -1,6 +1,6 @@
 import { Hono, type Context } from "hono";
 import { ligueDe } from "../shared/ligues";
-import { type Choix, coteDe, gainPotentiel, PARI_MIN, type Pari, type Rencontre, validerRencontre, type VisibiliteParis } from "../shared/paris";
+import { type Choix, COTE_PARIABLE_MIN, coteDe, gainPotentiel, MISE_MAX_RENCONTRE, PARI_MIN, type Pari, type Rencontre, validerRencontre, type VisibiliteParis } from "../shared/paris";
 import { formatJetons } from "../shared/regles";
 import { joueurConnecte, type JoueurSession } from "./auth";
 import { crediter, debiter, saisonCourante } from "./economie";
@@ -41,14 +41,18 @@ const lireRencontre = (l: Record<string, unknown>): Rencontre => ({
   statut: l.statut as Rencontre["statut"], resultat: (l.resultat as Choix | null) ?? null,
 });
 
-/** Statistiques de saison des paris (à part, comme le poker : hors classement général). */
+/**
+ * Statistiques de saison d'un pari réglé : il compte dans le classement général (gains nets et une
+ * partie jouée) et dans l'onglet « Paris sportifs ». Il compte dans la saison où il est réglé.
+ */
 async function enregistrerPari(db: D1Database, joueurId: string, mise: number, rendu: number): Promise<void> {
   const saison = await saisonCourante(db);
   if (!saison) return;
   await db
     .prepare(
-      `INSERT INTO stats_saison (joueur_id, saison_id, paris_joues, gains_paris) VALUES (?1, ?2, 1, ?3)
-       ON CONFLICT (joueur_id, saison_id) DO UPDATE SET paris_joues = paris_joues + 1, gains_paris = gains_paris + excluded.gains_paris`,
+      `INSERT INTO stats_saison (joueur_id, saison_id, gains_nets, mains, paris_joues, gains_paris) VALUES (?1, ?2, ?3, 1, 1, ?3)
+       ON CONFLICT (joueur_id, saison_id) DO UPDATE SET gains_nets = gains_nets + excluded.gains_nets, mains = mains + 1,
+         paris_joues = paris_joues + 1, gains_paris = gains_paris + excluded.gains_paris`,
     )
     .bind(joueurId, saison.id, rendu - mise)
     .run();
@@ -87,7 +91,7 @@ paris.get("/rencontres", async (c) => {
   return c.json({
     rencontres: (rencontres.results as Record<string, unknown>[]).map(lireRencontre),
     mesParis: mesParis.results as unknown as Pari[],
-    miseMax: ligueDe(stats?.gains_nets ?? 0, stats?.mains ?? 0, null).miseMaxRoom,
+    miseMax: Math.min(MISE_MAX_RENCONTRE, ligueDe(stats?.gains_nets ?? 0, stats?.mains ?? 0, null).miseMaxRoom),
     test: (await visibiliteParis(db)) === "admins",
   });
 });
@@ -116,14 +120,15 @@ paris.post("/parier", async (c) => {
   if (Date.now() >= r.debut) return c.json({ erreur: "Le coup d'envoi est passé : les paris sont fermés." }, 409);
   const cote = coteDe(r, b.choix!);
   if (!cote) return c.json({ erreur: "Pas de match nul possible sur cette rencontre." }, 400);
+  if (cote < COTE_PARIABLE_MIN) return c.json({ erreur: `Cote trop faible : on ne peut pas parier sous ${COTE_PARIABLE_MIN.toFixed(2).replace(".", ",")}.` }, 400);
   // Plafond : la mise maximum de la ligue, au total sur une même rencontre.
   const saison = await saisonCourante(db);
   const stats = saison
     ? await db.prepare("SELECT gains_nets, mains FROM stats_saison WHERE joueur_id = ? AND saison_id = ?").bind(moi.id, saison.id).first<{ gains_nets: number; mains: number }>()
     : null;
-  const max = ligueDe(stats?.gains_nets ?? 0, stats?.mains ?? 0, null).miseMaxRoom;
+  const max = Math.min(MISE_MAX_RENCONTRE, ligueDe(stats?.gains_nets ?? 0, stats?.mains ?? 0, null).miseMaxRoom);
   const deja = await db.prepare("SELECT COALESCE(SUM(mise), 0) AS t FROM paris WHERE rencontre_id = ? AND joueur_id = ? AND statut = 'en_cours'").bind(r.id, moi.id).first<{ t: number }>();
-  if ((deja?.t ?? 0) + mise > max) return c.json({ erreur: `Maximum ${formatJetons(max)} jetons par rencontre dans votre ligue (déjà ${formatJetons(deja?.t ?? 0)}).` }, 409);
+  if ((deja?.t ?? 0) + mise > max) return c.json({ erreur: `Maximum ${formatJetons(max)} jetons par rencontre (déjà ${formatJetons(deja?.t ?? 0)}).` }, 409);
   const solde = await debiter(db, moi.id, mise, null, `pari-${r.id}`);
   if (solde === null) return c.json({ erreur: "Solde insuffisant pour ce pari." }, 409);
   await db.prepare("INSERT INTO paris (rencontre_id, joueur_id, choix, mise, cote, le) VALUES (?, ?, ?, ?, ?, ?)").bind(r.id, moi.id, b.choix, mise, cote, Date.now()).run();

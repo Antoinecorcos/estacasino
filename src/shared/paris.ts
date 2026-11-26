@@ -9,7 +9,16 @@ export const SPORTS = ["Football", "Rugby", "Basket", "Tennis", "Handball", "Hoc
 
 export const PARI_MIN = 10;
 export const COTE_MIN = 1.01;
-export const COTE_MAX = 100;
+/** Cote plafonnée : limite les gros coups sur les outsiders. */
+export const COTE_MAX = 6;
+/** En dessous, on ne peut pas parier : miser gros sur un favori écrasant serait trop facile. */
+export const COTE_PARIABLE_MIN = 1.1;
+/** Mise maximum par joueur et par rencontre (et jamais plus que la mise maximum de sa ligue). */
+export const MISE_MAX_RENCONTRE = 5_000;
+/** Part des mises redistribuée par nos cotes (le marché en redistribue environ 92-94 %). */
+export const REDISTRIBUTION = 0.95;
+
+export const pariable = (cote: number | null) => cote !== null && cote >= COTE_PARIABLE_MIN;
 
 export interface Rencontre {
   id: number;
